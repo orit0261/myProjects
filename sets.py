@@ -4,7 +4,6 @@ nums.add(2)
 print(nums)
 
 graphicDesigner = {'InDesign', 'Photoshop', 'Acrobat', 'Premiere', 'Bridge'}
-
 graphicDesigner.add('Illustrator')
 print(graphicDesigner)
 
