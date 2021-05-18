@@ -41,6 +41,22 @@ class connectSQL:
         df.to_sql(self.table_name, con=self.engine.connect(), schema="dev", index=False)
         print('Table {} has been added successfully'.format(self.table_name))
 
+    def create_results_Table(self,table_name,field_name):
+        self.table_name = table_name
+        try:
+            query = 'DROP TABLE if exists ' + self.table_name
+            self.engine.connect().execute(query)
+            query =("""create table {}( {} text)""").format(self.table_name,'"{}"'.format(field_name))
+
+            self.engine.connect().execute(query)
+            print('Table {} has been added successfully'.format(self.table_name))
+
+        except Exception as e:
+            print(e, "error in creating table")
+        finally:
+            self.engine.dispose()
+
+
     def create_ads_Table(self,table_name):
         # create table
         '''
