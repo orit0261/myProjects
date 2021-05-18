@@ -2,7 +2,6 @@ import config
 import random
 import string
 
-
 def get_dic():
     return {"username": config.POSTGRES_USER,
             "port": config.POSTGRES_PORT,
@@ -31,3 +30,15 @@ def generate_random_string(min_len=5, max_len=15):
         rand_string += random.choice(string.ascii_letters)
 
     return rand_string
+
+
+# def create_dataframe_from_tbl:
+#     rows = s.execute(query).fetchall()
+#
+#     headers = []
+#     rowproxy = rows[0]
+#     # get all column names
+#     for column, value in rowproxy.items():  # rowproxy.items() returns an array like [(key0, value0), (key1, value1)]
+#         headers.append(column)
+#     import pandas
+#     df1 = pandas.DataFrame(rows, columns=headers)

@@ -1,3 +1,5 @@
+import random
+
 import general_functions as gf
 import sqlconnect
 
@@ -20,7 +22,9 @@ def select_from_table(tbl):
     connect = sqlconnect.connectSQL(**js)
     try:
         s = f"select * from {tbl}"
-        ls = connect.engine.execute(s).fetchall()
+        ls = list(connect.engine.execute(s).fetchall())
+        ls_sort = sorted(ls, key=lambda x: x[2])
+
         return True
     except Exception as e:
         print(e, "error")
@@ -30,7 +34,10 @@ def select_from_table(tbl):
 
 
 if __name__ == '__main__':
-    #print(gf.generate_random_string())
-    select_from_table('customers')
-    create_ads()
+    js = gf.get_dic()
+    connect = sqlconnect.connectSQL(**js)
+    connect.create_ads_Table('ads_tbl')
+    for i in range(1,20000):
+        connect.insert_ads_Table(random.randint(0,200000), gf.generate_random_string())
+
     print(gf.qsort(['ab', 'ba', 'rtg', 'aba', 'aaa', 'abc', 'bdd']))

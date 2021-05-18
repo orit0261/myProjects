@@ -68,3 +68,17 @@ class connectSQL:
             self.engine.dispose()
 
 
+
+    def insert_ads_Table(self,f_id,f_name=''):
+        try:
+            query = """INSERT INTO ads_tbl ("Id", "Name")
+                         VALUES(%s, %s)"""
+            self.engine.connect().execute(query,(f_id,f_name,))
+            print('record has been added successfully to ads table')
+
+        except Exception as e:
+            print(e, "error in insert ads table")
+        finally:
+            self.engine.dispose()
+
+
