@@ -32,17 +32,8 @@ def select_from_table(tbl,get_field,tbl_res,field_name):
         cur.execute(sql)
         ls = list(cur.fetchall())
         ls_sort = sorted(ls)
-        #ls_sort = sorted(ls, key=lambda x: x[0])
-
-        #values = [item[0] for item in ls_sort]
-        values = ', '.join(map(str, ls_sort))
-
-        test_tuple = (('a',), ('b',), ('c',))
-
+        values = tuple(ls_sort)
         cur.executemany("insert into results values (%s);", values)
-        #sql = "INSERT INTO results VALUES %r;" % values
-        #sql = """INSERT INTO {}({}) VALUES ({})""".format(tbl_res,'"{}"'.format(field_name),values)
-        #cur.executemany(sql,values)
         con.commit()
 
         t2 = time.time()
