@@ -68,7 +68,7 @@ class create_psycopg:
          for i in range(0, 200000, irows)]
 
         if prlel:
-            gf.sort_parallel(self.__global_lst, 2)
+            gf.sort_parallel(self.__global_lst, 4)
 
         t2 = perf_counter()
         print('t2=', t2)
