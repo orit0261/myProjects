@@ -1,12 +1,9 @@
-import random
-import time
 from time import perf_counter
 import psycopg2
 
 import general_functions as gf
 import sqlconnect
 from Rafel import config
-from Rafel.parallel_sort import mergeSortParallel
 
 
 class create_psycopg:
@@ -62,6 +59,7 @@ class create_psycopg:
             nfield = 'Sorting - step2'
             num = 2
             tfield = 'Sorting - step2_Process_time'
+        print(f'\nStart Phase - {num}')
         t1 = perf_counter()  # time.time()
         print('t1=', t1)
         self.__update_times('results', tfield, t1, 1)
@@ -70,12 +68,13 @@ class create_psycopg:
          for i in range(0, 200000, irows)]
 
         if prlel:
-            gf.sort_parallel(self.__global_lst, 3)
+            gf.sort_parallel(self.__global_lst, 2)
 
         t2 = perf_counter()
         print('t2=', t2)
         self.__update_times('results', tfield, t2, 20000)
-        print(f"Phase - {num} takes {t2 - t1:0.4f} seconds")
+        print(f"\nPhase - {num} takes {t2 - t1:0.4f} seconds")
+        print(f'\nFinished Phase - {num}')
 
         target_field = '"{}"'.format(nfield)
         index_field = '"{}"'.format('Index')
@@ -83,6 +82,7 @@ class create_psycopg:
             self.__cur.execute(
                 "UPDATE results SET {}={} WHERE ({}={})".format(target_field, "'{}'".format(v), index_field, i + 1))
             self.__con.commit()
+
 
     def select_from_table_phase_2(self, tbl, get_field, ioffset, irows=2000, parallel=False):
         try:

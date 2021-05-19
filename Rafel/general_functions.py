@@ -1,8 +1,9 @@
-import time
-
+from heapq import merge
+from multiprocessing.pool import Pool
 import config
 import random
 import string
+
 
 def get_dic():
     return {"username": config.POSTGRES_USER,
@@ -24,11 +25,10 @@ def generate_random_string(min_len=5, max_len=15):
     return rand_string
 
 
-
 # Merges two subarrays of arr[].
 # First subarray is arr[l..m]
 # Second subarray is arr[m+1..r]
-def merge(arr, l, m, r):
+def domerge(arr, l, m, r):
     n1 = m - l + 1
     n2 = r - m
 
@@ -83,12 +83,10 @@ def mergeSort(arr, l, r):
         # Sort first and second halves
         mergeSort(arr, l, m)
         mergeSort(arr, m + 1, r)
-        merge(arr, l, m, r)
+        domerge(arr, l, m, r)
         return arr
 
 
-from heapq import merge
-from multiprocessing.pool import Pool
 
 
 def sort_parallel(xs, n_workers):
@@ -114,4 +112,3 @@ def sort_inplace(xs):
 # print("\n\nSorted array is")
 # for i in range(n):
 #     print("%d" % arr[i]),
-
