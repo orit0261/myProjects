@@ -86,9 +86,7 @@ def mergeSort(arr, l, r):
         domerge(arr, l, m, r)
         return arr
 
-
-
-
+# create parallel with pool
 def sort_parallel(xs, n_workers):
     pool = Pool(n_workers)
     pos = [i * len(xs) // n_workers for i in range(n_workers + 1)]
@@ -99,16 +97,3 @@ def sort_parallel(xs, n_workers):
 
 def sort_inplace(xs):
     xs.sort()
-# for i in range(0, 200000, 2000):
-#   print(i)
-# # Driver code to test above
-# arr = [12, 11, 13, 5, 6, 7, -1 ,0 ,9 ,12]
-# n = len(arr)
-# print("Given array is")
-# for i in range(n):
-#     print("%d" % arr[i]),
-#
-# mergeSort(arr, 0, n-1)
-# print("\n\nSorted array is")
-# for i in range(n):
-#     print("%d" % arr[i]),
