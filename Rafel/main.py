@@ -6,6 +6,7 @@ import psycopg2
 import general_functions as gf
 import sqlconnect
 from Rafel import config
+from Rafel.parallel_sort import mergeSortParallel
 
 
 class create_psycopg:
@@ -26,7 +27,7 @@ class create_psycopg:
         except psycopg2.DatabaseError as e:
             print(f'Error in updating times {e}')
 
-    def select_from_table_phase_1(self, tbl, get_field, tbl_res):
+    def exec_phase_1(self, tbl, get_field, tbl_res):
         t1 = perf_counter()  # time.time()
         try:
             sql = """SELECT {} FROM {}""".format('"{}"'.format(get_field), tbl)
@@ -41,8 +42,8 @@ class create_psycopg:
 
             t2 = perf_counter()  # time.time()
 
-            self.__update_times('results','Sorting - step1_Process_time', t1, 1)
-            self.__update_times('results', 'Sorting - step1_Process_time',t2, 20000)
+            self.__update_times('results', 'Sorting - step1_Process_time', t1, 1)
+            self.__update_times('results', 'Sorting - step1_Process_time', t2, 20000)
 
             print(f'the time for phase-1 : {t2 - t1:.2f} seconds')
         except psycopg2.DatabaseError as e:
@@ -51,13 +52,12 @@ class create_psycopg:
         #     if self.__con:
         #         self.__con.close()
 
-
-    def exec_phase_2(self, tbl, get_field, irows=2000):
-        t1 = perf_counter()#time.time()
+    def exec_phase_2(self, tbl, get_field, irows=2000,parallel=False):
+        t1 = perf_counter()  # time.time()
         print('t1=', t1)
         self.__update_times('results', 'Sorting - step2_Process_time', t1, 1)
 
-        [self.select_from_table_phase_2(tbl, get_field, i)
+        [self.select_from_table_phase_2(tbl, get_field, i,parallel)
          for i in range(0, 200000, irows)]
 
         t2 = perf_counter()
@@ -65,14 +65,14 @@ class create_psycopg:
         self.__update_times('results', 'Sorting - step2_Process_time', t2, 20000)
         print(f"Phase - 2 takes {t2 - t1:0.4f} seconds")
 
-
         target_field = '"{}"'.format('Sorting - step2')
         index_field = '"{}"'.format('Index')
-        for i,v in enumerate(self.__global_lst):
-            self.__cur.execute("UPDATE results SET {}={} WHERE ({}={})".format(target_field,"'{}'".format(v),index_field,i+1))
+        for i, v in enumerate(self.__global_lst):
+            self.__cur.execute(
+                "UPDATE results SET {}={} WHERE ({}={})".format(target_field, "'{}'".format(v), index_field, i + 1))
             self.__con.commit()
 
-    def select_from_table_phase_2(self, tbl, get_field, ioffset, irows=2000):
+    def select_from_table_phase_2(self, tbl, get_field, ioffset, irows=2000, parallel=False):
         try:
             sql = """SELECT {} FROM {} OFFSET {} FETCH FIRST {} ROW ONLY""" \
                 .format('"{}"'.format(get_field), tbl, ioffset, irows)
@@ -80,10 +80,13 @@ class create_psycopg:
             ls = list(self.__cur.fetchall())
             # convert tuple to list
             ls_sort = [item for t in ls for item in t]
-            ls_sort = sorted(ls_sort)
+            # ls_sort = sorted(ls_sort)
             # merge ls_sort with global list and sort it
             self.__global_lst = self.__global_lst + ls_sort
-            self.__global_lst = gf.mergeSort(self.__global_lst, 0, len(self.__global_lst) - 1)
+            if parallel:
+                self.__global_lst = mergeSortParallel(self.__global_lst, 3)
+            else:
+                self.__global_lst = gf.mergeSort(self.__global_lst, 0, len(self.__global_lst) - 1)
         except psycopg2.DatabaseError as e:
             print(f'Error {e}')
 
@@ -101,6 +104,6 @@ if __name__ == '__main__':
 
     obj_psy = create_psycopg()
 
-    obj_psy.select_from_table_phase_1('ads_tbl', 'Name', 'results')
-    #obj_psy.select_from_table_phase_2('ads_tbl', 'Name', 0)
+    obj_psy.exec_phase_1('ads_tbl', 'Name', 'results')
     obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000)
+    obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000,Parallel=True)
