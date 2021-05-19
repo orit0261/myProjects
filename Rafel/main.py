@@ -16,6 +16,10 @@ class create_psycopg:
         self.__cur = self.__con.cursor()
         self.__global_lst = []
 
+    def __del__(self):
+        if self.__con:
+            self.__con.close()
+
     def __update_times(self, tbl_res, target_field, ttime, rec_num):
         target_field = '"{}"'.format(target_field)
         index_field = '"{}"'.format('Index')
@@ -48,11 +52,8 @@ class create_psycopg:
             print(f'the time for phase-1 : {t2 - t1:.2f} seconds')
         except psycopg2.DatabaseError as e:
             print(f'Error {e}')
-        # finally:
-        #     if self.__con:
-        #         self.__con.close()
 
-    def exec_phase_2(self, tbl, get_field, irows=2000,prlel=False):
+    def exec_phase_2(self, tbl, get_field, irows=2000, prlel=False):
         if prlel:
             nfield = 'Sorting - step3'
             num = 3
@@ -65,8 +66,11 @@ class create_psycopg:
         print('t1=', t1)
         self.__update_times('results', tfield, t1, 1)
 
-        [self.select_from_table_phase_2(tbl, get_field, i,parallel=prlel)
+        [self.select_from_table_phase_2(tbl, get_field, i, parallel=prlel)
          for i in range(0, 200000, irows)]
+
+        if prlel:
+            gf.sort_parallel(self.__global_lst, 3)
 
         t2 = perf_counter()
         print('t2=', t2)
@@ -82,8 +86,8 @@ class create_psycopg:
 
     def select_from_table_phase_2(self, tbl, get_field, ioffset, irows=2000, parallel=False):
         try:
-            sql = """SELECT {} FROM {} OFFSET {} FETCH FIRST {} ROW ONLY""" \
-                .format('"{}"'.format(get_field), tbl, ioffset, irows)
+            sql = """SELECT {} FROM {} ORDER BY {} OFFSET {} FETCH FIRST {} ROW ONLY""" \
+                .format('"{}"'.format(get_field), tbl, '"{}"'.format(get_field), ioffset, irows)
             self.__cur.execute(sql)
             ls = list(self.__cur.fetchall())
             # convert tuple to list
@@ -91,9 +95,7 @@ class create_psycopg:
             # ls_sort = sorted(ls_sort)
             # merge ls_sort with global list and sort it
             self.__global_lst = self.__global_lst + ls_sort
-            if parallel:
-                self.__global_lst = mergeSortParallel(self.__global_lst, 3)
-            else:
+            if not parallel:
                 self.__global_lst = gf.mergeSort(self.__global_lst, 0, len(self.__global_lst) - 1)
         except psycopg2.DatabaseError as e:
             print(f'Error {e}')
@@ -114,4 +116,4 @@ if __name__ == '__main__':
 
     obj_psy.exec_phase_1('ads_tbl', 'Name', 'results')
     obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000)
-    obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000,prlel=True)
+    obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000, prlel=True)

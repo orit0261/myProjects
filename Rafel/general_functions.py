@@ -87,7 +87,20 @@ def mergeSort(arr, l, r):
         return arr
 
 
+from heapq import merge
+from multiprocessing.pool import Pool
 
+
+def sort_parallel(xs, n_workers):
+    pool = Pool(n_workers)
+    pos = [i * len(xs) // n_workers for i in range(n_workers + 1)]
+    xss = [xs[i:j] for i, j in zip(pos[:-1], pos[1:])]
+    pool.map(sort_inplace, xss)
+    return list(merge(*xss))
+
+
+def sort_inplace(xs):
+    xs.sort()
 # for i in range(0, 200000, 2000):
 #   print(i)
 # # Driver code to test above
