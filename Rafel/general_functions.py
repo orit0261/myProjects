@@ -1,3 +1,5 @@
+import time
+
 import config
 import random
 import string
@@ -9,16 +11,6 @@ def get_dic():
             "password": config.POSTGRES_PW,
             "host": config.POSTGRES_URL
             }
-
-
-def qsort(inlist):
-    if inlist == []:
-        return []
-    else:
-        pivot = inlist[0]
-        lesser = qsort([x for x in inlist[1:] if x < pivot])
-        greater = qsort([x for x in inlist[1:] if x >= pivot])
-        return lesser + [pivot] + greater
 
 
 # generate random string len between max and min
@@ -110,3 +102,11 @@ print("\n\nSorted array is")
 for i in range(n):
     print("%d" % arr[i]),
 
+t1 = time.time()
+t1 = time.strftime("%S", time.gmtime(t1))
+print('t1=',t1)
+time.sleep(5)
+
+t2 = time.time()
+t2 = time.strftime("%S", time.gmtime(t2))
+print('t2=',t2)
