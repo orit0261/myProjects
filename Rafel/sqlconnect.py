@@ -28,7 +28,8 @@ class connectSQL:
         try:
             query = 'DROP TABLE if exists ' + self.table_name
             self.engine.connect().execute(query)
-            query =("""create table {}( {} text, {} text, {} text, {} text,{} text,{} text)""").format(self.table_name,
+            query =("""create table {}( {} serial, {} text, {} text, {} text, {} text,{} text,{} text)""").format(self.table_name,
+                                                                             '"{}"'.format("Index"),
                                                                               '"{}"'.format("Sorting - step1"),
                                                                               '"{}"'.format("Sorting - step1_Process_time"),
                                                                               '"{}"'.format("Sorting - step2"),
