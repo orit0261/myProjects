@@ -27,7 +27,7 @@ def generate_random_string(min_len=5, max_len=15):
 
     rand_string = ""
     for i in range(num_char):
-        rand_string += random.choice(string.ascii_letters)
+        rand_string += random.choice(string.ascii_letters.upper())
 
     return rand_string
 

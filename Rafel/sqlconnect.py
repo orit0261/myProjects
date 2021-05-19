@@ -1,5 +1,3 @@
-from datetime import datetime
-import re
 import sqlalchemy as sq
 
 
@@ -25,28 +23,18 @@ class connectSQL:
                                   + self.port + '/' + self.database)
         self.engine = engine
 
-    def createTable(self, df, table_name):
-        # create table
-        '''
-        :param dir: table path
-        :param table_name: DB wanted table name
-        '''
-        self.table_name = table_name
-
-        query = 'DROP TABLE if exists public.' + self.table_name
-        self.engine.connect().execute(query)
-
-        df.columns = map(lambda x: re.sub(r"[^\w\s]", "", x), df.columns)
-        print("Starting to work on the table.. " + str(datetime.now()))
-        df.to_sql(self.table_name, con=self.engine.connect(), schema="dev", index=False)
-        print('Table {} has been added successfully'.format(self.table_name))
-
-    def create_results_Table(self,table_name,field_name):
-        self.table_name = table_name
+    def create_results_Table(self):
+        self.table_name = 'results'
         try:
             query = 'DROP TABLE if exists ' + self.table_name
             self.engine.connect().execute(query)
-            query =("""create table {}( {} text)""").format(self.table_name,'"{}"'.format(field_name))
+            query =("""create table {}( {} text, {} text, {} text, {} text,{} text,{} text)""").format(self.table_name,
+                                                                              '"{}"'.format("Sorting - step1"),
+                                                                              '"{}"'.format("Sorting - step1_Process_time"),
+                                                                              '"{}"'.format("Sorting - step2"),
+                                                                              '"{}"'.format("Sorting - step2_Process_time"),
+                                                                              '"{}"'.format("Sorting - step3"),
+                                                                              '"{}"'.format("Sorting - step3_Process_time"))
 
             self.engine.connect().execute(query)
             print('Table {} has been added successfully'.format(self.table_name))
@@ -91,7 +79,6 @@ class connectSQL:
                          VALUES(%s, %s)"""
             self.engine.connect().execute(query,(f_id,f_name,))
             print('record has been added successfully to ads table')
-
         except Exception as e:
             print(e, "error in insert ads table")
         finally:
