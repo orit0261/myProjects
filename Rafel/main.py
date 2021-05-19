@@ -52,20 +52,28 @@ class create_psycopg:
         #     if self.__con:
         #         self.__con.close()
 
-    def exec_phase_2(self, tbl, get_field, irows=2000,parallel=False):
+    def exec_phase_2(self, tbl, get_field, irows=2000,prlel=False):
+        if prlel:
+            nfield = 'Sorting - step3'
+            num = 3
+            tfield = 'Sorting - step3_Process_time'
+        else:
+            nfield = 'Sorting - step2'
+            num = 2
+            tfield = 'Sorting - step2_Process_time'
         t1 = perf_counter()  # time.time()
         print('t1=', t1)
-        self.__update_times('results', 'Sorting - step2_Process_time', t1, 1)
+        self.__update_times('results', tfield, t1, 1)
 
-        [self.select_from_table_phase_2(tbl, get_field, i,parallel)
+        [self.select_from_table_phase_2(tbl, get_field, i,parallel=prlel)
          for i in range(0, 200000, irows)]
 
         t2 = perf_counter()
         print('t2=', t2)
-        self.__update_times('results', 'Sorting - step2_Process_time', t2, 20000)
-        print(f"Phase - 2 takes {t2 - t1:0.4f} seconds")
+        self.__update_times('results', tfield, t2, 20000)
+        print(f"Phase - {num} takes {t2 - t1:0.4f} seconds")
 
-        target_field = '"{}"'.format('Sorting - step2')
+        target_field = '"{}"'.format(nfield)
         index_field = '"{}"'.format('Index')
         for i, v in enumerate(self.__global_lst):
             self.__cur.execute(
@@ -106,4 +114,4 @@ if __name__ == '__main__':
 
     obj_psy.exec_phase_1('ads_tbl', 'Name', 'results')
     obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000)
-    obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000,Parallel=True)
+    obj_psy.exec_phase_2('ads_tbl', 'Name', irows=2000,prlel=True)

@@ -88,25 +88,17 @@ def mergeSort(arr, l, r):
 
 
 
-for i in range(0, 200000, 2000):
-  print(i)
-# Driver code to test above
-arr = [12, 11, 13, 5, 6, 7, -1 ,0 ,9 ,12]
-n = len(arr)
-print("Given array is")
-for i in range(n):
-    print("%d" % arr[i]),
+# for i in range(0, 200000, 2000):
+#   print(i)
+# # Driver code to test above
+# arr = [12, 11, 13, 5, 6, 7, -1 ,0 ,9 ,12]
+# n = len(arr)
+# print("Given array is")
+# for i in range(n):
+#     print("%d" % arr[i]),
+#
+# mergeSort(arr, 0, n-1)
+# print("\n\nSorted array is")
+# for i in range(n):
+#     print("%d" % arr[i]),
 
-mergeSort(arr, 0, n-1)
-print("\n\nSorted array is")
-for i in range(n):
-    print("%d" % arr[i]),
-
-t1 = time.time()
-t1 = time.strftime("%S", time.gmtime(t1))
-print('t1=',t1)
-time.sleep(5)
-
-t2 = time.time()
-t2 = time.strftime("%S", time.gmtime(t2))
-print('t2=',t2)
