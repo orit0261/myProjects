@@ -3,7 +3,7 @@ import psycopg2
 
 import general_functions as gf
 import sqlconnect
-from Rafel import config
+from Rafael import config
 
 
 class create_psycopg:
@@ -105,10 +105,10 @@ if __name__ == '__main__':
     js = gf.get_dic()
     connect = sqlconnect.connectSQL(**js)
 
-    connect.create_ads_Table('ads_tbl')
+    # connect.create_ads_Table('ads_tbl')
 
-    for i in range(1,20001):
-     connect.insert_ads_Table(random.randint(0,200000), gf.generate_random_string())
+    # for i in range(1,20001):
+    # connect.insert_ads_Table(random.randint(0,200000), gf.generate_random_string())
 
     connect.create_results_Table()
 
