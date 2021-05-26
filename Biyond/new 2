@@ -1,0 +1,20 @@
+SELECT rl.route_id, r.origin_port, r.destination_port, r.origin_country, r.destination_country, 
+       r.calculation_date, rl.leg_id, rl.origin_airport, rl.destination_airport, rl.leg_type,
+       rl.pricing_period, rl.hub, rl.origin_country, rl.destination_country,
+	   lp1."cityName" "cityName_org", lp1."countryCode" "countryCode_org", lp1."countryName" "countryName_org", lp1.mode mode_org, lp1."portCode" "portCode_org", 
+       lp1."portCodeSt"  "portCodeSt_org", lp1."portName" "portName_org", lp1.concat concat_org,
+	   lp2."cityName" "cityName_dest", lp2."countryCode" "countryCode_dest", lp2."countryName" "countryName_dest", lp2.mode mode_dest, lp2."portCode" "portCode_dest", 
+       lp2."portCodeSt" "portCodeSt_dest", lp2."portName" "portName_dest", lp2.concat concat_dest
+
+
+	FROM prod.gpm_calculated_routes r
+	INNER JOIN prod.gpm_calculated_routes_legs rl
+		ON r.route_id = rl.route_id
+	LEFT JOIN prod.list_ports lp1
+	ON r.origin_port = lp1."portCode"
+	AND r.origin_country = lp1."countryCode"
+		
+	LEFT JOIN prod.list_ports lp2
+	ON r.destination_port = lp2."portCode"
+	AND r.destination_country = lp2."countryCode"
+

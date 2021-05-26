@@ -1,0 +1,6 @@
+https://yuvaljsons.s3.amazonaws.com/file.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA6ONEJIHW3MESL66C%2F20200129%2Feu-central-1%2Fs3%2Faws4_request&X-Amz-Date=20200129T090520Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=c5738c2168160f100b4efafdba755fe5dc0d33364d2ed664e56fcc828cecc179
+
+
+
+
+curl --request PUT --upload-file "new 1.txt" "https://yuvaljsons.s3.amazonaws.com/file.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA6ONEJIHW3MESL66C%2F20200129%2Feu-central-1%2Fs3%2Faws4_request&X-Amz-Date=20200129T090520Z&X-Amz-Expires=3600&X-Amz-SignedHeaders=host&X-Amz-Signature=c5738c2168160f100b4efafdba755fe5dc0d33364d2ed664e56fcc828cecc179"

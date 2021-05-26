@@ -1,0 +1,43 @@
+-- FUNCTION: prod.get_document_route_date(text, integer, timestamp without time zone)
+
+-- DROP FUNCTION prod.get_document_route_date(text, integer, timestamp without time zone);
+
+CREATE OR REPLACE FUNCTION prod.get_document_route_date(
+	p_tenant_id text,
+	p_document_serial integer,
+	p_date timestamp without time zone)
+    RETURNS TABLE("routeId" text, "document_serial" integer,
+				  "LastReceivedDate" timestamp without time zone, 
+				  "route_name" text,"document_type" text) 
+    LANGUAGE 'sql'
+
+    COST 100
+    VOLATILE 
+    ROWS 1000
+AS $BODY$
+--get date for current document v_date
+SELECT DISTINCT d2."routeId",d2."document_serial", LastReceivedDate,
+		CONCAT(d2."origin_city_name",',',d2."origin_country_name",' - ',d2."destination_city_name",',',d2."destination_country_name") as "route_name",
+		d3."document_type"
+FROM prod."document_routes" d2
+INNER JOIN 
+	(SELECT origin_city_name, origin_country_name,
+	 destination_city_name, destination_country_name,
+	 document_type,
+	 MAX(d.received_date) as LastReceivedDate
+	 FROM prod."document_routes" r
+	 INNER JOIN prod."documents" d
+	 ON r."document_serial"=d."document_serial"
+	 WHERE d.received_date < p_date
+	 GROUP BY origin_city_name, origin_country_name, destination_city_name, destination_country_name,document_type
+	) d3
+ON d2."origin_city_name"=d3."origin_city_name"
+AND d2."origin_country_name"=d3."origin_country_name"
+AND d2."destination_city_name"=d3."destination_city_name"
+AND d2."destination_country_name"=d3."destination_country_name"
+WHERE d2."tenantId" = p_tenant_id
+AND d2."document_serial" = p_document_serial
+$BODY$;
+
+ALTER FUNCTION prod.get_document_route_date(text, integer, timestamp without time zone)
+    OWNER TO "Postgresadmin";

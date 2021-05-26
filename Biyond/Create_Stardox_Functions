@@ -1,0 +1,1064 @@
+
+create function prod.stardox_doc_last_route_number(p_tenant_id text, p_document_serial integer)
+    returns TABLE
+            (
+                last_route_number integer
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - Parsing_Handle*/
+
+SELECT COALESCE(MAX("route_number"), 0) + 1 as last_route_number
+FROM prod.document_routes
+WHERE "tenantId" = p_tenant_id
+  AND "document_serial" = p_document_serial
+
+$$;
+
+alter function prod.stardox_doc_last_route_number(text, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_charges(p_tenant_id text, p_document_serial integer, p_route_number integer,
+                                         p_tab_index integer)
+    returns TABLE
+            (
+                tenantid                   text,
+                document_serial            integer,
+                route_number               integer,
+                chargeid                   integer,
+                charge_type                text,
+                qtty                       integer,
+                units                      text,
+                price_value                double precision,
+                price_currency_code        text,
+                margin_effect_amount       double precision,
+                margin_effect_pos_or_nev   text,
+                business_effect_amount     double precision,
+                business_effect_pos_or_nev text,
+                last30d_value              double precision,
+                last30d_currency_code      text,
+                last60d_value              double precision,
+                last60d_currency_code      text,
+                last90d_value              double precision,
+                last90d_currency_code      text,
+                last120d_value             double precision,
+                last120d_currency_code     text,
+                remarks                    text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 1 - /process/charges/{documentId}/{routeId}*/
+
+SELECT DISTINCT C1."tenantId"                         as tenantid,
+                C1."document_serial"                  as document_serial,
+                R1."routeId"                          as routeid,
+                "record_id"                           as chargeid,
+                "charge_type"                         as charge_type,
+                COALESCE("qtty", 0)                   as qtty,
+                "units"                               as units,
+                COALESCE("price_value", 0)            as price_value,
+                "price_currency_code"                 as price_currency_code,
+                COALESCE("margin_effect_amount", 0)   as margin_effect_amount,
+                "margin_effect_pos_or_nev"            as margin_effect_pos_or_nev,
+                COALESCE("business_effect_amount", 0) as business_effect_amount,
+                "business_effect_pos_or_nev"          as business_effect_pos_or_nev,
+                COALESCE("last30d_value", 0)          as last30d_value,
+                "last30d_currency_code"               as last30d_currency_code,
+                COALESCE("last60d_value", 0)          as last60d_value,
+                "last60d_currency_code"               as last60d_currency_code,
+                COALESCE("last90d_value", 0)          as last90d_value,
+                "last90d_currency_code"               as last90d_currency_code,
+                COALESCE("last120d_value", 0)         as last120d_value,
+                "last120d_currency_code"              as last120d_currency_code,
+                "remarks"                             as remarks
+
+FROM prod.document_charges C1
+         INNER JOIN prod.document_routes R1
+                    ON C1."tenantId" = R1."tenantId"
+                        AND C1."document_serial" = R1."document_serial"
+                        AND C1."route_number" = R1."route_number"
+
+WHERE C1."tenantId" = p_tenant_id
+  AND C1."document_serial" = p_document_serial
+  AND R1."routeId" = p_route_number
+  AND (p_tab_index is null or R1."tab_index" = p_tab_index)
+LIMIT 50;
+
+$$;
+
+alter function prod.stardox_doc_charges(text, integer, integer, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_rejected_other_exceptions(p_tenant_id text, p_document_serial integer, p_tab_index integer)
+    returns TABLE
+            (
+                tenantid        text,
+                document_serial integer,
+                tab_index       integer,
+                "exceptionId"   integer,
+                origin          text,
+                destination     text,
+                exception_type  text,
+                document_value  text,
+                expected_value  text,
+                accepted        boolean
+            )
+    language sql
+as
+$$
+SELECT "tenantId",
+       document_serial,
+       tab_index,
+       "exceptionId",
+       origin,
+       destination,
+       exception_type,
+       document_value,
+       expected_value,
+       accepted
+
+FROM prod.document_exceptions
+WHERE "tenantId" = p_tenant_id
+  AND "document_serial" = p_document_serial
+  AND tab_index = p_tab_index
+  AND "exception_kind" = 'OTHER'
+  AND "accepted" = FALSE
+
+
+$$;
+
+alter function prod.stardox_doc_rejected_other_exceptions(text, integer, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_rejected_price_exceptions(p_tenant_id text, p_document_serial integer, p_tab_index integer)
+    returns TABLE
+            (
+                tenantid           text,
+                document_serial    integer,
+                tab_index          integer,
+                "exceptionId"      integer,
+                exception_type     text,
+                origin             text,
+                destination        text,
+                charge_type        text,
+                charge_description text,
+                current_value      double precision,
+                current_currency   text,
+                pervious_value     double precision,
+                pervious_currency  text,
+                accepted           boolean
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 2 - /process/priceExceptions/{documentId} */
+
+SELECT "tenantId",
+       document_serial,
+       tab_index,
+       "exceptionId",
+       exception_type,
+       origin,
+       destination,
+       charge_type,
+       charge_description,
+       current_value,
+       current_currency,
+       previous_value,
+       previous_currency,
+       accepted
+
+FROM prod.document_exceptions
+WHERE "tenantId" = p_tenant_id
+  AND "document_serial" = p_document_serial
+  AND "tab_index" = p_tab_index
+  AND "exception_kind" = 'PRICE'
+  AND accepted = FALSE
+
+
+$$;
+
+alter function prod.stardox_doc_rejected_price_exceptions(text, integer, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_statistics(p_tenant_id text)
+    returns TABLE
+            (
+                "tenantId"            text,
+                document_status       text,
+                document_status_count bigint
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 1 - /statistics */
+
+SELECT "tenantId"               as tenantId,
+       "document_status"        as document_status,
+       count("document_status") as document_status_count
+FROM prod.documents
+WHERE "tenantId" = p_tenant_id
+GROUP BY "tenantId", "document_status"
+HAVING "document_status" is not null
+
+$$;
+
+alter function prod.stardox_doc_statistics(text) owner to "Postgresadmin";
+
+create function prod.stardox_doc_data(p_tenant_id text, p_document_id uuid)
+    returns TABLE
+            (
+                "tenantId"      text,
+                "documentId"    uuid,
+                document_serial integer,
+                expired_in_min  integer,
+                document_name   text,
+                recieved_date   timestamp without time zone,
+                document_type   text,
+                table_name      text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - Global function */
+SELECT "tenantId"        as tenantId,
+       "documentId"      as documentId,
+       "document_serial" as document_serial,
+       "expired_in_min"  as expired_in_min,
+       "document_name"   as document_name,
+       "received_date"   as received_date,
+       "document_type"   as document_type,
+       table_name        as table_name
+FROM prod.documents
+WHERE "tenantId" = p_tenant_id
+  AND "documentId" = p_document_id
+
+$$;
+
+alter function prod.stardox_doc_data(text, uuid) owner to "Postgresadmin";
+
+create function prod.stardox_doc_insert_tabs(p_tenantid text, p_document_serial integer, p_tab_index integer,
+                                             p_sheet_name text)
+    returns TABLE
+            (
+                p_document_serial integer
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - docParsing_Handle*/
+
+INSERT INTO prod.document_tabsheets("tenantId", document_serial, tab_index, sheet_name)
+VALUES (p_tenantid, p_document_serial, p_tab_index, p_sheet_name)
+
+RETURNING "document_serial";
+
+$$;
+
+alter function prod.stardox_doc_insert_tabs(text, integer, integer, text) owner to "Postgresadmin";
+
+create function prod.stardox_doc_insert(p_tenant_id text)
+    returns TABLE
+            (
+                documentid      uuid,
+                document_serial integer
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 1 - /file POST*/
+
+INSERT INTO prod.documents("tenantId", "received_date")
+VALUES (p_tenant_id, current_timestamp)
+RETURNING "documentId","document_serial";
+
+$$;
+
+alter function prod.stardox_doc_insert(text) owner to "Postgresadmin";
+
+create function prod.stardox_doc_update_exceptions(p_tenantid text, p_document_serial integer, p_exception_id integer,
+                                                   p_accepted boolean)
+    returns TABLE
+            (
+                p_document_serial integer
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 2 - /process/exceptions/{documentId} */
+
+UPDATE prod.document_exceptions
+SET accepted=p_accepted
+WHERE ("tenantId" = p_tenantid)
+  AND ("document_serial" = p_document_serial)
+  AND ("exceptionId" = p_exception_id)
+
+RETURNING "document_serial";
+
+$$;
+
+alter function prod.stardox_doc_update_exceptions(text, integer, integer, boolean) owner to "Postgresadmin";
+
+create function prod.stardox_doc_update_exsist(p_tenantid text, p_document_id uuid, p_stakeholderid text,
+                                               p_stakeholdername text, p_documenttitle text, p_documentcategory text)
+    returns TABLE
+            (
+                documentid uuid
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 1 - /file/{documentId} */
+
+UPDATE prod.documents
+SET stake_holder_id     = p_stakeholderId,
+    stake_holder_name   = p_stakeholdername,
+    "document_title"    = p_documentTitle,
+    "document_category" = p_documentCategory
+WHERE "tenantId" = p_tenantid
+  and "documentId" = p_document_id
+
+RETURNING "documentId";
+
+$$;
+
+alter function prod.stardox_doc_update_exsist(text, uuid, text, text, text, text) owner to "Postgresadmin";
+
+create function prod.stardox_doc_update_rejected_exceptions(p_tenant_id text, p_document_serial integer)
+    returns TABLE
+            (
+                document_serial integer
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 2 - /process/exceptions/{documentId} */
+
+UPDATE prod.document_tabsheets dt
+SET rejected_price_exceptions=(SELECT COUNT(*)
+                               FROM prod.document_exceptions AS de
+                               WHERE de."tenantId" = p_tenant_id
+                                 AND document_serial = p_document_serial
+                                 AND accepted = FALSE
+                                 AND exception_kind = 'PRICE'
+                                 AND dt."tenantId" = de."tenantId"
+                                 AND dt.document_serial = de.document_serial
+                                 AND dt.tab_index = de.tab_index);
+
+UPDATE prod.document_tabsheets dt
+SET rejected_other_exceptions=(SELECT COUNT(*)
+                               FROM prod.document_exceptions AS de
+                               WHERE de."tenantId" = p_tenant_id
+                                 AND document_serial = p_document_serial
+                                 AND accepted = FALSE
+                                 AND exception_kind = 'OTHER'
+                                 AND dt."tenantId" = de."tenantId"
+                                 AND dt.document_serial = de.document_serial
+                                 AND dt.tab_index = de.tab_index)
+RETURNING "document_serial";
+
+$$;
+
+alter function prod.stardox_doc_update_rejected_exceptions(text, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_update_rep_detalis(p_tenantid text, p_document_id uuid, p_report_details text)
+    returns TABLE
+            (
+                documentid uuid
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 2 - /document/report/{documentId} */
+
+UPDATE prod.documents
+SET "report_details"= p_report_details
+WHERE "tenantId" = p_tenantid
+  and "documentId" = p_document_id
+RETURNING "documentId";
+
+$$;
+
+alter function prod.stardox_doc_update_rep_detalis(text, uuid, text) owner to "Postgresadmin";
+
+create function prod.stardox_doc_update_status(p_tenantid text, p_document_id uuid, p_status text)
+    returns TABLE
+            (
+                documentid uuid
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PostDocumentArchive+PostDocument+Parsing_Handle */
+UPDATE prod.documents
+SET "document_status"= p_status
+WHERE "tenantId" = p_tenantid
+  and "documentId" = p_document_id
+RETURNING "documentId";
+
+$$;
+
+alter function prod.stardox_doc_update_status(text, uuid, text) owner to "Postgresadmin";
+
+create function prod.stardox_doc_new_doc(p_tenantid text, p_document_id uuid, p_documentcategory text,
+                                         p_documentname text, p_document_title text, p_documenttype text)
+    returns TABLE
+            (
+                document_name text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 1 - /file POST */
+
+UPDATE prod.documents
+SET "document_category"= p_documentCategory,
+    "document_name"    = p_documentName,
+    "document_title"   = p_document_title,
+    "document_type"    = p_documentType,
+    "document_status"  = 'PROCESSING'
+WHERE "tenantId" = p_tenantId
+  and "documentId" = p_document_id
+
+RETURNING "document_name";
+
+$$;
+
+alter function prod.stardox_doc_new_doc(text, uuid, text, text, text, text) owner to "Postgresadmin";
+
+create function prod.stardox_doc_delete(p_tenantid text, p_document_id uuid, p_document_serial integer)
+    returns TABLE
+            (
+                p_document_id uuid
+            )
+    language sql
+as
+$$
+DELETE
+FROM prod.documents
+WHERE "tenantId" = p_tenantId
+  and "documentId" = p_document_id;
+
+DELETE
+FROM prod.document_routes
+WHERE "tenantId" = p_tenantId
+  and "document_serial" = p_document_serial;
+
+DELETE
+FROM prod.document_charges
+WHERE "tenantId" = p_tenantId
+  and "document_serial" = p_document_serial
+
+RETURNING "p_document_id";
+
+$$;
+
+alter function prod.stardox_doc_delete(text, uuid, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_header(p_tenant_id text, p_page integer, p_pagesize integer,
+                                        p_fromdate timestamp without time zone, p_todate timestamp without time zone,
+                                        p_doc_status text, p_categoryfilter text, p_stakeholdernamefilter text,
+                                        p_sortby text, p_page_offset integer, p_next_rec integer)
+    returns TABLE
+            (
+                "tenantId"        text,
+                "documentId"      uuid,
+                document_name     text,
+                stake_holder_id   text,
+                stake_holder_name text,
+                document_category text,
+                document_type     text,
+                received_date     timestamp without time zone,
+                modified_date     timestamp without time zone,
+                document_status   text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 1 - /document/headers */
+
+SELECT "tenantId"          as tenantId,
+       "documentId"        as documentId,
+       "document_name"     as document_name,
+       "stake_holder_id"   as stake_holder_id,
+       "stake_holder_name" as stake_holder_name,
+       "document_category" as document_category,
+       "document_type"     as document_type,
+       "received_date"     as received_date,
+       "modified_date"     as modified_date,
+       "document_status"   as document_status
+FROM prod.documents
+WHERE ("tenantId" = p_tenant_id)
+  AND ("document_status" IN ('ACTIVATED', 'ADMIN_VALIDATION', 'PROCESSING'))
+  AND (p_fromdate is null or "received_date" >= p_fromdate)
+  AND (p_todate is null or "received_date" < p_todate)
+  AND (p_doc_status is null or UPPER("document_status") = p_doc_status)
+  AND (p_categoryfilter is null or "document_category" = p_categoryfilter)
+  AND (p_stakeholdernamefilter is null or lower(stake_holder_name) like '%' || lower(p_stakeholdernamefilter) || '%')
+ORDER BY CASE p_sortby WHEN 'NONE ASCENDING' THEN document_serial END ASC,
+         CASE p_sortby WHEN 'DOCUMENT_NAME ASCENDING' THEN document_name END ASC,
+         CASE p_sortby WHEN 'DOCUMENT_NAME DESCENDING' THEN document_name END DESC,
+         CASE p_sortby WHEN 'STAKEHOLDER ASCENDING' THEN stake_holder_name END ASC,
+         CASE p_sortby WHEN 'STAKEHOLDER DESCENDING' THEN stake_holder_name END DESC,
+         CASE p_sortby WHEN 'DOCUMENT_TYPE ASCENDING' THEN document_type END ASC,
+         CASE p_sortby WHEN 'DOCUMENT_TYPE DESCENDING' THEN document_type END DESC,
+         CASE p_sortby WHEN 'CATEGORY ASCENDING' THEN document_category END ASC,
+         CASE p_sortby WHEN 'CATEGORY DESCENDING' THEN document_category END DESC,
+         CASE p_sortby WHEN 'RECEIVED ASCENDING' THEN CAST(received_date as text) END ASC,
+         CASE p_sortby WHEN 'RECEIVED DESCENDING' THEN CAST(received_date as text) END DESC,
+         CASE p_sortby WHEN 'MODIFIED ASCENDING' THEN CAST(modified_date as text) END ASC,
+         CASE p_sortby WHEN 'MODIFIED DESCENDING' THEN CAST(modified_date as text) END DESC,
+         CASE p_sortby WHEN 'STATUS ASCENDING' THEN document_status END ASC,
+         CASE p_sortby WHEN 'STATUS DESCENDING' THEN document_status END DESC
+    OFFSET p_page_offset ROWS
+FETCH NEXT
+p_next_rec
+ROWS
+ONLY
+
+$$;
+
+alter function prod.stardox_doc_header(text, integer, integer, timestamp, timestamp, text, text, text, text, integer, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_contant_details(p_tenant_id text, p_document_serial integer, p_tab_index integer)
+    returns TABLE(tenantid text, document_serial integer, routeid integer, route_number integer, origin_country_name text, origin_country_code text, origin_city_name text, origin_city_code text, origin_state_name text, origin_state_code text, origin_port_code text, destination_country_name text, destination_country_code text, destination_city_name text, destination_state_name text, destination_state_code text, destination_port_code text, price_point_value double precision, price_point_currency_code text, validity_date timestamp without time zone, service text, accepted boolean)
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 1 - /process/charges/{documentId}/{routeId}*/
+
+SELECT R1."tenantId"                       as tenantid,
+       R1."document_serial"                as document_serial,
+       R1."routeId"                        as routeid,
+       R1."route_number"                   as route_number,
+       R1."origin_country_name"            as origin_country_name,
+       R1."origin_country_code"            as origin_country_code,
+       R1."origin_city_name"               as origin_city_name,
+       R1."origin_city_code"               as origin_city_code,
+       R1."origin_state_name"              as origin_state_name,
+       R1."origin_state_code"              as origin_state_code,
+       R1."origin_port_code"               as origin_port_code,
+       R1."destination_country_name"       as destination_country_name,
+       R1."destination_country_code"       as destination_country_code,
+       R1."destination_city_name"          as destination_city_name,
+       R1."destination_state_name"         as destination_state_name,
+       R1."destination_state_code"         as destination_state_code,
+       R1."destination_port_code"          as destination_port_code,
+       COALESCE(R1."price_point_value", 0) as price_point_value,
+       R1."price_point_currency_code"      as price_point_currency_code,
+       R1."validity_date"                  as validity_date,
+       R1."service"                        as service,
+       R1."accepted"                       as accepted
+FROM prod.document_routes R1
+         INNER JOIN prod.document_tabsheets T1
+                    ON R1."tenantId" = T1."tenantId"
+                    AND R1."document_serial" = T1."document_serial"
+                    AND R1.tab_index = T1.tab_index
+WHERE R1."tenantId" = p_tenant_id
+  AND R1."document_serial" = p_document_serial
+  AND R1.tab_index = p_tab_index
+ORDER BY R1."route_number"
+LIMIT 50;
+
+$$;
+
+alter function prod.stardox_doc_contant_details(text, integer, integer) owner to "Postgresadmin";
+
+create function stardox_doc_price_exceptions(p_tenant_id text, p_document_serial integer, p_tab_index integer)
+    returns TABLE(tenantid text, document_serial integer, tab_sheet_index integer, "exceptionId" integer, exception_type text, origin text, destination text, charge_type text, charge_description text, current_value double precision, current_currency text, pervious_value double precision, pervious_currency text, accepted boolean)
+    language sql
+as
+$$
+SELECT "tenantId",
+       document_serial,
+       tab_index,
+       "exceptionId",
+       exception_type,
+       origin,
+       destination,
+       charge_type,
+       charge_description,
+       current_value,
+       current_currency,
+       previous_value,
+       previous_currency,
+       accepted
+
+FROM prod.document_exceptions
+WHERE "tenantId" = p_tenant_id
+  AND "document_serial" = p_document_serial
+  AND "tab_index" = p_tab_index
+  AND "exception_kind" = 'PRICE'
+
+$$;
+
+alter function stardox_doc_price_exceptions(text, integer, integer) owner to "Postgresadmin";
+
+
+create function prod.stardox_doc_exceptions(p_tenant_id text, p_document_serial integer, p_only_rejected boolean)
+    returns TABLE(tab_index integer, sheet_name text, number_of_price_exceptions integer, number_of_other_exceptions integer, rejected_price_exceptions integer, rejected_other_exceptions integer)
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 2 - /process/exceptions/{documentId}*/
+
+SELECT distinct T1.tab_index,
+                T1.sheet_name,
+                COALESCE("number_of_price_exceptions", 0) as number_of_price_exceptions,
+                COALESCE("number_of_other_exceptions", 0) as number_of_other_exceptions,
+                COALESCE("rejected_price_exceptions", 0)  as rejected_price_exceptions,
+                COALESCE("rejected_other_exceptions", 0)  as rejected_other_exceptions
+FROM prod.document_tabsheets T1
+         LEFT JOIN prod.document_exceptions E1
+                    ON E1.document_serial = T1.document_serial
+                        AND E1.tab_index = T1.tab_index
+WHERE T1."tenantId" = p_tenant_id
+  AND T1.document_serial = p_document_serial
+  --AND (p_only_rejected is null or E1.accepted = not p_only_rejected)
+   AND CASE WHEN EXISTS (SELECT * FROM prod.document_exceptions where document_serial=p_document_serial 
+						and tab_index=T1.tab_index LIMIT 1) THEN  (p_only_rejected is null or E1.accepted = not p_only_rejected)
+
+       ELSE TRUE
+END
+
+order by T1.tab_index
+$$;
+
+alter function prod.stardox_doc_exceptions(text, integer, boolean) owner to "Postgresadmin";
+
+
+create function prod.stardox_doc_other_exceptions(p_tenant_id text, p_document_serial integer, p_tab_index integer)
+    returns TABLE
+            (
+                tenantid        text,
+                document_serial integer,
+                tab_index       integer,
+                "exceptionId"   integer,
+                origin          text,
+                destination     text,
+                exception_type  text,
+                document_value  text,
+                expected_value  text,
+                accepted        boolean
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 2 - /process/otherExceptions/{documentId} */
+
+SELECT "tenantId",
+       document_serial,
+       tab_index,
+       "exceptionId",
+       origin,
+       destination,
+       exception_type,
+       document_value,
+       expected_value,
+       accepted
+
+FROM prod.document_exceptions
+WHERE "tenantId" = p_tenant_id
+  AND "document_serial" = p_document_serial
+  AND tab_index = p_tab_index
+  AND "exception_kind" = 'OTHER'
+
+$$;
+
+alter function prod.stardox_doc_other_exceptions(text, integer, integer) owner to "Postgresadmin";
+
+create function prod.stardox_doc_route_date(p_tenant_id text, p_document_serial integer,
+                                            p_date timestamp without time zone)
+    returns TABLE
+            (
+                "routeId"       integer,
+                document_serial integer,
+                document_type   text,
+                received_date   timestamp without time zone,
+                route_name      text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - PHASE 2 -/document/{documentId} */
+
+SELECT DISTINCT d2."routeId"         as "routeId",
+                d2."document_serial" as "document_serial",
+                d."document_type"    as "document_type",
+                d."received_date"    as "received_date",
+                d2."route_name"      as "route_name"
+FROM prod."documents" d,
+     prod."document_routes" d2
+WHERE d2."tenantId" = p_tenant_id
+  AND d2."document_serial" = p_document_serial;
+
+$$;
+
+alter function prod.stardox_doc_route_date(text, integer, timestamp) owner to "Postgresadmin";
+
+
+
+
+
+create procedure prod.stardox_parse_insert_doc_routes(p_document_serial integer, p_table_name text, p_tab_index integer)
+    language plpgsql
+as
+$$
+BEGIN
+
+    ------------------------------DOCUMENT ROUTES------------------------------
+    IF p_table_name = 'document_parse' THEN
+        INSERT INTO prod.document_routes("tenantId",
+                                         document_serial,
+                                         route_number,
+                                         origin_city_code,
+                                         origin_city_name,
+                                         origin_country_code,
+                                         origin_country_name,
+                                         origin_port_code,
+                                         origin_state_code,
+                                         origin_state_name,
+                                         destination_city_code,
+                                         destination_city_name,
+                                         destination_country_code,
+                                         destination_country_name,
+                                         destination_port_code,
+                                         destination_state_code,
+                                         destination_state_name,
+                                         validity_date,
+                                         route_name,
+                                         tab_index,
+                                         service)
+        SELECT m."tenantId",
+               m.document_serial,
+               m.route_number,
+               m.origin_city_code,
+               m.origin_city_name,
+               m.origin_country_code,
+               m.origin_country_name,
+               m.origin_port_code,
+               m.origin_state_code,
+               m.origin_state_name,
+               m.destination_city_code,
+               m.destination_city_name,
+               m.destination_country_code,
+               m.destination_country_name,
+               m.destination_port_code,
+               m.destination_state_code,
+               m.destination_state_name,
+               m.validity_date,
+               m.route_name,
+               m.tab_index,
+               m.service
+        FROM mrr.document_parse AS m
+        WHERE m.tab_index = p_tab_index
+          AND m.document_serial = p_document_serial
+        GROUP BY "tenantId",
+                 m.document_serial,
+                 m.route_number,
+                 m.destination_city_code,
+                 m.destination_city_name,
+                 m.destination_country_code,
+                 m.destination_country_name,
+                 m.destination_port_code,
+                 m.destination_state_code,
+                 m.destination_state_name,
+                 m.origin_city_code,
+                 m.origin_city_name,
+                 m.origin_country_code,
+                 m.origin_country_name,
+                 m.origin_port_code,
+                 m.origin_state_code,
+                 m.origin_state_name,
+                 m.validity_date,
+                 m.route_name,
+                 m.tab_index,
+                 m.service;
+
+
+    UPDATE prod.document_routes a
+        SET price_point_value = (SELECT price_value
+                                 FROM prod.document_charges b
+                                 WHERE a.document_serial = b.document_serial
+                                   AND A.DOCUMENT_SERIAL IN (p_document_serial)
+                                   AND (b.charge_type = 'main freight' or lower(b.charge_type) like 'ocean freight')
+                                   AND price_value is not null
+                                   AND a.route_number = b.route_number
+                                   AND a.tab_index = b.tab_index);
+
+    END IF;
+END;
+$$;
+
+alter procedure prod.stardox_parse_insert_doc_routes(integer, text, integer) owner to "Postgresadmin";
+
+create procedure prod.stardox_parse_insert_doc_charges(p_document_serial integer, p_table_name text, p_tab_index integer)
+    language plpgsql
+as
+$$
+BEGIN
+
+    ------------------------------Document Parse CHARGES------------------------------
+    IF p_table_name = 'document_parse' THEN
+
+        INSERT INTO prod.document_charges("tenantId",
+                                          document_serial,
+                                          charge_type,
+                                          units,
+                                          price_value,
+                                          price_currency_code,
+                                          remarks,
+                                          route_number,
+                                          record_id,
+                                          tab_index,
+                                          last30d_value,
+                                          last30d_currency_code,
+                                          last60d_value,
+                                          last60d_currency_code,
+                                          last90d_value,
+                                          last90d_currency_code,
+                                          last120d_value,
+                                          last120d_currency_code)
+        SELECT "tenantId",
+               m.document_serial,
+               concat_ws('-', m.charge_name),
+               m.container,
+               m.cost,
+               m.currency,
+               concat_ws('|', concat('ContainerType:', m.container),
+                         concat('ServiceProvider:', m.service_provider_name), concat('IncoTerm:', m.incoterm),
+                         concat('Commodity:', m.commodity), concat('Remarks:', m.rate_remarks)),
+               m.route_number,
+               m.record_id,
+               m.tab_index,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL
+        FROM mrr.document_parse AS m
+        WHERE m.document_serial = p_document_serial
+          AND m.tab_index = p_tab_index
+          AND m.record_id NOT IN (SELECT e.record_id
+                                  FROM prod.document_exceptions AS e
+                                  WHERE e.document_serial = p_document_serial
+                                    AND e.tab_index = p_tab_index);
+
+
+    END IF;
+
+END;
+$$;
+
+create procedure prod.stardox_parse_set_route_number(p_document_serial integer, p_table_name text, p_tab_index integer)
+    language plpgsql
+as
+$$
+BEGIN
+
+    ------------------------------Document Parse ROUTES------------------------------
+    IF p_table_name = 'document_parse' THEN
+
+        UPDATE mrr.document_parse AS a
+        SET route_number = mr.row_num
+        FROM (SELECT route_name,
+                     row_number() OVER () AS row_num
+              FROM mrr.document_parse
+              WHERE document_serial = p_document_serial  AND tab_index = p_tab_index
+                AND tab_index = p_tab_index
+              GROUP BY route_name
+             ) AS mr
+        WHERE a.document_serial = p_document_serial
+          AND a.tab_index = p_tab_index
+          AND a.route_name = mr.route_name;
+    END IF;
+END ;
+$$;
+
+alter procedure stardox_parse_set_route_number(integer, text, integer) owner to "Postgresadmin";
+
+
+create procedure prod.stardox_parse_insert_doc_routes(p_document_serial integer, p_table_name text, p_tab_index integer)
+    language plpgsql
+as
+$$
+BEGIN
+
+    ------------------------------DOCUMENT ROUTES------------------------------
+    IF p_table_name = 'document_parse' THEN
+        INSERT INTO prod.document_routes("tenantId",
+                                         document_serial,
+                                         route_number,
+                                         origin_city_code,
+                                         origin_city_name,
+                                         origin_country_code,
+                                         origin_country_name,
+                                         origin_port_code,
+                                         origin_state_code,
+                                         origin_state_name,
+                                         destination_city_code,
+                                         destination_city_name,
+                                         destination_country_code,
+                                         destination_country_name,
+                                         destination_port_code,
+                                         destination_state_code,
+                                         destination_state_name,
+                                         validity_date,
+                                         route_name,
+                                         tab_index,
+                                         service)
+        SELECT m."tenantId",
+               m.document_serial,
+               m.route_number,
+               m.origin_city_code,
+               m.origin_city_name,
+               m.origin_country_code,
+               m.origin_country_name,
+               m.origin_port_code,
+               m.origin_state_code,
+               m.origin_state_name,
+               m.destination_city_code,
+               m.destination_city_name,
+               m.destination_country_code,
+               m.destination_country_name,
+               m.destination_port_code,
+               m.destination_state_code,
+               m.destination_state_name,
+               m.validity_date,
+               m.route_name,
+               m.tab_index,
+               m.service
+        FROM mrr.document_parse AS m
+        WHERE m.tab_index = p_tab_index
+          AND m.document_serial = p_document_serial
+        GROUP BY "tenantId",
+                 m.document_serial,
+                 m.route_number,
+                 m.destination_city_code,
+                 m.destination_city_name,
+                 m.destination_country_code,
+                 m.destination_country_name,
+                 m.destination_port_code,
+                 m.destination_state_code,
+                 m.destination_state_name,
+                 m.origin_city_code,
+                 m.origin_city_name,
+                 m.origin_country_code,
+                 m.origin_country_name,
+                 m.origin_port_code,
+                 m.origin_state_code,
+                 m.origin_state_name,
+                 m.validity_date,
+                 m.route_name,
+                 m.tab_index,
+                 m.service;
+
+    END IF;
+END;
+$$;
+
+alter procedure prod.stardox_parse_insert_doc_routes(integer, text, integer) owner to "Postgresadmin";
+
+create procedure prod.stardox_parse_insert_doc_charges(p_document_serial integer, p_table_name text, p_tab_index integer)
+    language plpgsql
+as
+$$
+BEGIN
+
+    ------------------------------Document Parse CHARGES------------------------------
+    IF p_table_name = 'document_parse' THEN
+
+        INSERT INTO prod.document_charges("tenantId",
+                                          document_serial,
+                                          charge_type,
+                                          units,
+                                          price_value,
+                                          price_currency_code,
+                                          remarks,
+                                          route_number,
+                                          record_id,
+                                          tab_index,
+                                          last30d_value,
+                                          last30d_currency_code,
+                                          last60d_value,
+                                          last60d_currency_code,
+                                          last90d_value,
+                                          last90d_currency_code,
+                                          last120d_value,
+                                          last120d_currency_code)
+        SELECT "tenantId",
+               m.document_serial,
+               concat_ws('-', m.charge_name),
+               m.container,
+               m.cost,
+               m.currency,
+               concat_ws('|', concat('ContainerType:', m.container),
+                         concat('ServiceProvider:', m.service_provider_name), concat('IncoTerm:', m.incoterm),
+                         concat('Commodity:', m.commodity), concat('Remarks:', m.rate_remarks)),
+               m.route_number,
+               m.record_id,
+               m.tab_index,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL,
+               NULL
+        FROM mrr.document_parse AS m
+        WHERE m.document_serial = p_document_serial
+          AND m.tab_index = p_tab_index
+          AND m.record_id NOT IN (SELECT e.record_id
+                                  FROM prod.document_exceptions AS e
+                                  WHERE e.document_serial = p_document_serial
+                                    AND e.tab_index = p_tab_index);
+
+
+    END IF;
+
+END;
+$$;
+
+alter procedure prod.stardox_parse_insert_doc_charges(integer, text, integer) owner to "Postgresadmin";
+
+create procedure prod.stardox_parse_doc_etl(p_document_serial integer, p_table_name text, p_tab_index integer)
+    language sql
+as
+$$
+CALL prod.stardox_parse_set_route_number(p_document_serial, p_table_name, p_tab_index);
+CALL prod.stardox_parse_insert_doc_routes(p_document_serial, p_table_name, p_tab_index);
+CALL prod.stardox_parse_insert_doc_charges(p_document_serial, p_table_name, p_tab_index);
+
+------------------------------
+UPDATE prod.documents
+SET document_status = 'ACTIVATED'
+WHERE documents.document_serial = p_document_serial;
+
+
+$$;
+
+alter procedure prod.stardox_parse_doc_etl(integer, text, integer) owner to "Postgresadmin";
+
+
+
+

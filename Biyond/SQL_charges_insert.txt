@@ -1,0 +1,12 @@
+INSERT INTO prod.document_charges(
+	"tenantId", "documentId", "routeId", "chargeId", "chargeType",
+	qtty, units, price_value, "price_currencyCode",
+	"marginEffect_amount", "marginEffect_posOrNev",
+	"businessEffect_amount", "businessEffect_posOrNev",
+	"last30D_value", "last30D_currencyCode", "last60D_value",
+	"last60D_currencyCode", "last90D_value",
+	"last90D_currencyCode", "last120D_value", 
+	"last120D_currencyCode", "remarks")
+	VALUES ('1', 1, '2', '2', 'A', 12, 3,23.5, 'IL',
+			11, 'POSITIVE', 34,'POSITIVE', 11.2, 'IL',
+			12.3, 'US', 13.4, 'JK', 14.3, 'YJ','REMARKS');

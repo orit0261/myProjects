@@ -1,0 +1,56 @@
+INSERT INTO prod.document_charges ("tenantId","documentId", "chargeId", "chargeType", qtty, units, price_value,
+                                   "price_currencyCode", "marginEffect_amount", "marginEffect_posOrNev",
+                                   "businessEffect_amount", "businessEffect_posOrNev", "last30D_value",
+                                   "last30D_currencyCode", "last60D_value", "last60D_currencyCode", "last90D_value",
+                                   "last90D_currencyCode", "last120D_value", "last120D_currencyCode", remarks,"countryname")
+								   
+								   
+SELECT '005237f9-6779-4c68-89d6-d0800559d4f4',
+		28,
+       o.charge_code,
+       o.charge_name,
+       1,
+       o."Unit",
+       o."Rate",
+       o."Currency",
+       0,
+       'POSITIVE',
+       0,
+       'NEGATIVE',
+       0,
+       o."Currency",
+       0,
+       o."Currency",
+       0,
+       o."Currency",
+       0,
+       o."Currency",
+       '',
+	   o."Country"
+	   
+FROM mrr.tier_a_local_charges_origin_air AS o
+UNION ALL
+SELECT '005237f9-6779-4c68-89d6-d0800559d4f4',
+		28,
+       d.charge_code,
+       d.charge_name,
+       1,
+       d."Unit",
+       d."Rate",
+       d."Currency",
+       0,
+       'POSITIVE',
+       0,
+       'NEGATIVE',
+       0,
+       d."Currency",
+       0,
+       d."Currency",
+       0,
+       d."Currency",
+       0,
+       d."Currency",
+       '',
+	   d."Country"
+
+FROM mrr.tier_a_local_charges_destination_air AS d;

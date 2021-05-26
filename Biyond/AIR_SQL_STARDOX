@@ -1,0 +1,41 @@
+select *
+from mrr.air_main_freight
+where document_serial=263
+
+select *
+from mrr.air_margins
+where document_serial=263
+
+select *
+from prod.document_routes
+where document_serial=268
+
+select *
+from prod.document_charges
+where document_serial=263
+
+select *
+from prod.document_exceptions
+where document_serial=263
+
+
+
+
+select *
+from mrr.air_main_freight
+where document_serial=263
+
+delete from mrr.air_linehaul_pivot where document_serial=263
+delete from prod.air_linehaul_pivot where document_serial=263
+delete from mrr.air_margins where document_serial=263
+delete from mrr.air_weight_break where document_serial=263
+delete from prod.air_margins where document_serial=263
+delete from prod.air_weight_break where document_serial=263
+delete from mrr.air_main_freight_pivot where document_serial=263
+delete from mrr.air_main_freight where document_serial=263
+delete from prod.air_main_freight where document_serial=263
+delete from prod.document_routes where document_serial=263
+delete from prod.document_charges where document_serial=263
+delete from prod.document_exceptions where document_serial=263
+delete from prod.document_tabsheets where document_serial=263
+

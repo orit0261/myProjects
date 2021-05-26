@@ -1,0 +1,625 @@
+create or replace function prod.stardox_booking_shipments_commodity_details(p_tenant_id text, p_document_id uuid,
+                                                                            p_shipment_id uuid, p_tabindex integer)
+    returns TABLE
+            (
+                commodity text,
+                hs_code   text,
+                qty       double precision,
+                value     double precision
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - /booking/process/shipments/{documentId}/{shipmentId}*/
+
+SELECT coalesce(dp.commodity, '') as commodity,
+       coalesce(dp.hs_code, '')   as hs_code,
+       dp.qty,
+       dp.value
+FROM prod.document_booking_shipments_commodity dp
+         LEFT JOIN prod.documents d
+                   ON dp."tenantId" = d."tenantId" AND dp.document_serial = d.document_serial
+         LEFT JOIN prod.document_booking_shipments ds
+                   ON dp."tenantId" = d."tenantId" AND dp.document_serial = d.document_serial
+                       AND dp.tab_index = ds.tab_index
+WHERE dp."tenantId" = p_tenant_id
+  AND d."documentId" = p_document_id
+  AND dp.tab_index = p_tabindex
+  AND "shipmentId" = p_shipment_id
+$$;
+
+alter function prod.stardox_booking_shipments_commodity_details(text, uuid, uuid, integer) owner to "Postgresadmin";
+
+create or replace function prod.stardox_doc_serial(p_tenant_id text, p_document_id uuid) returns integer
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - Global function */
+SELECT "document_serial" as document_serial
+FROM prod.documents
+WHERE "tenantId" = p_tenant_id
+  AND "documentId" = p_document_id
+
+$$;
+
+alter function prod.stardox_doc_serial(text, uuid) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_shipments(p_tenant_id text, p_document_id uuid, p_tabindex integer,
+                                                          p_type text[])
+    returns TABLE
+            (
+                "shipmentId"     integer,
+                customer_ref_num text,
+                commodity        text,
+                package_type     text,
+                package_qty      integer,
+                weight           text,
+                length           text,
+                width            text,
+                height           text,
+                volume           text,
+                hazmat           boolean,
+                hazmat_class     text,
+                status           text
+            )
+    language sql
+as
+$$
+    /*  created by orit */
+/*  stardox booking  API - /booking/process/shipments/{documentId}*/
+    --shipments
+SELECT "FreightPieceId",
+       coalesce("freightPiecePoNumber", ''),--Customer Ref. #
+       coalesce("commodityDescription", ''),
+       coalesce("freightPieceType", ''),--Pack. type
+       quantity,
+       TRIM(concat(coalesce("weight", 0), ' ', coalesce("weightUnits", '')))      as weight,
+       TRIM(concat(coalesce("length", 0), ' ', coalesce("measurementUnits", ''))) as length,
+       TRIM(concat(coalesce("width", 0), ' ', coalesce("measurementUnits", '')))  as width,
+       TRIM(concat(coalesce("height", 0), ' ', coalesce("measurementUnits", ''))) as height,
+       TRIM(concat(coalesce("volume", 0), ' ', coalesce("volumeUnits", '')))      as volume,
+       hazardous,--True/False
+       coalesce("hazardClass", ''),
+       bf."statusUI"
+FROM prod.booking_request_freight_pieces bf
+         INNER JOIN prod.booking_requests br
+                    ON br."bookingId" = bf."bookingId"
+WHERE "documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND tab_index = p_tabindex
+  AND (p_type is null or bf."statusUI" = ANY (p_type::text[]))
+$$;
+
+alter function prod.stardox_booking_shipments(text, uuid, integer, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_get_accepted_tabs(p_tenant_id text, p_document_id uuid, p_only_rejected text[])
+    returns TABLE
+            (
+                tab_index           integer,
+                sheet_name          text,
+                number_of_parties   bigint,
+                number_of_shipments bigint,
+                number_of_routes    bigint
+            )
+    language sql
+as
+$$
+(
+    SELECT dc.tab_index,
+           dc.sheet_name,
+           count(br.*)  as number_of_parties,
+           null::bigint as number_of_shipments,
+           null::bigint as number_of_routes
+    FROM prod.document_tabsheets dc
+             LEFT JOIN prod.booking_requests br
+                       ON br."documentSerial" = dc.document_serial
+                           AND dc.tab_index = br.tab_index
+             LEFT JOIN prod.booking_request_parties bp
+                       ON bp."bookingId" = br."bookingId"
+                           AND (p_only_rejected is null or UPPER(bp."statusUI") = ANY (p_only_rejected::text[]))
+    WHERE br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+    GROUP BY dc.tab_index, dc.sheet_name
+             --HAVING (p_only_rejected is null or bf."statusUI" = ANY(p_only_rejected::text[]))
+    UNION
+    SELECT dc.tab_index,
+           dc.sheet_name,
+           null::bigint as number_of_parties,
+           count(br.*)  as number_of_shipments,
+           null::bigint as number_of_routes
+    FROM prod.document_tabsheets dc
+             LEFT JOIN prod.booking_requests br
+                       ON br."documentSerial" = dc.document_serial
+                           AND dc.tab_index = br.tab_index
+             LEFT JOIN prod.booking_request_freight_pieces bf
+                       ON bf."bookingId" = br."bookingId"
+                           AND (p_only_rejected is null or UPPER(bf."statusUI") = ANY (p_only_rejected::text[]))
+    WHERE br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+    GROUP BY dc.tab_index, dc.sheet_name
+             --HAVING (p_only_rejected is null or bf."statusUI" = ANY(p_only_rejected::text[]))
+    ORDER BY tab_index)
+
+$$;
+
+alter function prod.stardox_booking_get_accepted_tabs(text, uuid, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_update_parties_accepted(p_tenant_id text, p_document_id uuid, my_list text[])
+    returns TABLE
+            (
+                doc_serial integer
+            )
+    language sql
+as
+$$
+    /*  created by orit */
+    /*  stardox booking  API - /booking/process/shipments/{documentId}*/
+
+    --UPDATE prod.document_parties a
+    --SET accepted = False
+    --FROM prod.documents b
+    --WHERE a."tenantId" = b."tenantId" AND a.document_serial = b.document_serial;
+
+UPDATE prod.booking_request_parties bp
+SET "statusUI" = 'ACCEPTED'
+FROM prod.booking_requests br
+WHERE br."bookingId" = bp."bookingId"
+  AND br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND bp."partyId" = ANY (my_list::integer[])
+
+RETURNING br."documentSerial";
+
+
+$$;
+
+alter function prod.stardox_booking_update_parties_accepted(text, uuid, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_update_routes_accepted(p_tenant_id text, p_document_id uuid, my_list text[])
+    returns TABLE
+            (
+                doc_serial integer
+            )
+    language sql
+as
+$$
+    /*  created by orit */
+    /*  stardox booking  API - /booking/process/shipments/{documentId}*/
+
+    --UPDATE prod.document_booking_routes a
+    --SET accepted = False
+    --FROM prod.documents b
+    --WHERE a."tenantId" = b."tenantId" AND a.document_serial = b.document_serial;
+
+UPDATE prod.booking_requests br
+SET "statusUI" = 'ACCEPTED'
+    --FROM prod.documents b
+WHERE br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+      --AND br."routeId" =  ANY(my_list::uuid[])
+
+RETURNING br."documentSerial"
+
+
+$$;
+
+alter function prod.stardox_booking_update_routes_accepted(text, uuid, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_update_shipments_accepted(p_tenant_id text, p_document_id uuid, my_list text[])
+    returns TABLE
+            (
+                doc_serial integer
+            )
+    language sql
+as
+$$
+    /*  created by orit */
+    /*  stardox booking  API - /booking/process/shipments/{documentId}*/
+
+    --UPDATE prod.document_booking_shipments a
+    --SET status = 'rejected'
+    --FROM prod.documents b
+    --WHERE a."tenantId" = b."tenantId" AND a.document_serial = b.document_serial;
+
+UPDATE prod.booking_request_freight_pieces bf
+SET "statusUI" = 'ACCEPTED'
+FROM prod.booking_requests br
+WHERE br."bookingId" = bf."bookingId"
+  AND br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND bf."FreightPieceId" = ANY (my_list::integer[])
+
+RETURNING br."documentSerial";
+
+
+$$;
+
+alter function prod.stardox_booking_update_shipments_accepted(text, uuid, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_document(p_tenant_id text, p_document_id uuid)
+    returns TABLE
+            (
+                booking_number        text,
+                latest_activity_date  text,
+                mode                  text,
+                origin                text,
+                destination           text,
+                total_booking_actual  integer,
+                total_booking_request integer,
+                conversion_rate       double precision
+            )
+    language plpgsql
+as
+$$
+    /*
+                Created By: Yaara Hayut
+                Last Updated: 19/01/2021
+            */
+/*  stardox booking  API - /booking/document/{documentid} */
+
+BEGIN
+    RETURN QUERY
+        with requested_routes as (
+            select br."bookingId",
+                   br."portOfLoadingPortCode",
+                   br."portOfDischargePortCode",
+                   br."jobMode",
+                   d.stake_holder_id as partyId
+            from prod.booking_requests br
+                     inner join prod.documents d on br."documentSerial" = d.document_serial
+            where br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))),
+
+             requested_shimpents as (
+                 select s."sId"
+                 from requested_routes r
+                          inner join prod.shipments s on r.partyId = s."customerPartyId" and r."jobMode" = s."mode"
+                          left join prod.locations pol on s."portOfLoadingLocationId" = pol."id"
+                          left join prod.locations pod on s."portOfDischargeLocationId" = pod."id"
+                 where pol."portCode" = r."portOfLoadingPortCode"
+                   and pod."portCode" = r."portOfDischargePortCode"),
+
+             requested_bookings as (
+                 select b."bookingId",
+                        b."creationDateTime",
+                        row_number() over (order by b."creationDateTime" desc) as rnk,
+                        r."jobMode",
+                        r."portOfLoadingPortCode",
+                        r."portOfDischargePortCode"
+                 from requested_routes r
+                          inner join prod.bookings b on r.partyId = b."customerPartyId" and r."jobMode" = b."jobMode"
+                          left join prod.locations pol on b."portOfLoadingLocationId" = pol."id"
+                          left join prod.locations pod on b."portOfDischargeLocationId" = pod."id"
+                 where pol."portCode" = r."portOfLoadingPortCode"
+                   and pod."portCode" = r."portOfDischargePortCode")
+
+        select *, a.total_booking_actual::DOUBLE PRECISION / a.total_booking_request as conversion_rate
+        from (
+                 select r."bookingId"::TEXT                                          as booking_number,
+                        to_char(r."creationDateTime", 'YYYY-MM-DD')                  as latest_activity_date,
+                        concat_ws(', ', r."jobMode", 'INTERNATIONAL')                as mode,
+                        r."portOfLoadingPortCode"                                    as origin,
+                        r."portOfDischargePortCode"                                  as destination,
+                        (select count("sId") from requested_shimpents)::INTEGER      as total_booking_actual,
+                        (select count("bookingId") from requested_bookings)::INTEGER as total_booking_request
+                 from requested_bookings r
+                 where rnk = 1) as a;
+END;
+$$;
+
+alter function prod.stardox_booking_document(text, uuid) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_parties(p_tenant_id text, p_document_id uuid, p_tabindex integer,
+                                                        p_type text[])
+    returns TABLE
+            (
+                "partyId"    integer,
+                role1        text,
+                role         text,
+                company      text,
+                department   text,
+                address      text,
+                city         text,
+                zip_code     text,
+                country_code text,
+                status       text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - /booking/parties/{documentId}, /invoice/parties/{documentId}*/
+
+
+SELECT d1."partyId",
+       d1.role                     as role1,
+       role2                       as role,
+       coalesce(name, ''),
+       coalesce(address1, '')      as address,
+       ''                          as department,
+       coalesce(city, '')          as city,
+       coalesce("postalCode", '')  as zip_code,
+       coalesce("countryCode", '') as country_code,
+       d1."statusUI"               as status
+FROM prod.booking_request_parties as d1
+
+         LEFT JOIN prod.booking_requests br
+                   ON br."bookingId" = d1."bookingId"
+         LEFT JOIN LATERAL (
+    SELECT distinct "partyId",
+                    unnest(ARRAY ['billingParty','supplier',
+                        'consignee','forwarder','notify','shipper','supplier']) as role2
+    FROM prod.booking_request_parties as d2
+    WHERE (p_type is null or d2."statusUI" = ANY (p_type::text[]))
+      AND d2."partyId" = d1."partyId"
+      AND d1.role = d2.role
+    ) pet ON TRUE
+WHERE (p_type is null or UPPER(d1."statusUI") = ANY (p_type::text[]))
+  AND br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND br.tab_index = p_tabindex
+
+$$;
+
+alter function prod.stardox_booking_parties(text, uuid, integer, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_parties_details(p_tenant_id text, p_document_id uuid,
+                                                                p_party_id integer, p_tabindex integer)
+    returns TABLE
+            (
+                name  text,
+                email text,
+                phone text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - /booking/parties/{documentId}/{partyId}*/
+SELECT coalesce(dp.name, '')           as name,
+       coalesce(dp."contactEmail", '') as email,
+       coalesce(dp."contactPhone", '') as phone
+       --'' as company_ref
+FROM prod.booking_request_parties dp
+         LEFT JOIN prod.booking_requests br
+                   ON br."bookingId" = dp."bookingId"
+WHERE br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND tab_index = p_tabindex
+  AND "partyId" = p_party_id
+$$;
+
+alter function prod.stardox_booking_parties_details(text, uuid, integer, integer) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_json(p_tenant_id text, p_document_id uuid)
+    returns TABLE
+            (
+                documentserial               text,
+                tabindex                     text,
+                bookingid                    text,
+                mode                         text,
+                "customerName"               text,
+                "serviceType"                text,
+                "originLocationCity"         text,
+                "originLocationZipCode"      text,
+                "originState"                text,
+                "originLocationCountry"      text,
+                "originPortCity"             text,
+                "originPortZipCode"          text,
+                "originPortCode"             text,
+                "originPortCountry"          text,
+                "destinationLocationCity"    text,
+                "destinationLocationZipCode" text,
+                "destinationLocationState"   text,
+                "destinationLocationCountry" text,
+                "destinationPortCity"        text,
+                "destinationPortZipCode"     text,
+                "destinationPortCode"        text,
+                "destinationPortCountry"     text,
+                "incoTerms"                  text,
+                "collectPrepaid"             text,
+                "previousBooking"            text,
+                "vesselName"                 text,
+                "voyageNumber"               text,
+                "ETS"                        date,
+                "ETD"                        date,
+                "pickupTime"                 time without time zone,
+                "deliveryTime"               time without time zone,
+                "termsAndConditions"         text,
+                "containerType"              text,
+                "containerQTY"               text,
+                "packageType"                text,
+                "packageQTY"                 text,
+                "packageDimensions"          text,
+                "packageDimensionsUnit"      text,
+                "weightGross"                double precision,
+                "weightNET"                  double precision,
+                "weightUnit"                 text,
+                "isHazmat"                   text,
+                "hazmatClass"                text,
+                remarks                      text
+            )
+    language plpgsql
+as
+$$
+/*
+        Created By: Yaara Hayut
+        Last Updated: 19/01/2021
+    */
+
+BEGIN
+    RETURN QUERY
+        SELECT "documentSerial"::TEXT,
+               br.tab_index::TEXT,
+               br."bookingId"::TEXT,
+               br."jobMode",
+               brp."name",
+               NULL,
+               br."pickupCity",
+               br."pickupPostalCode",
+               br."pickupStateCode",
+               br."pickupCountryCode",
+               br."portOfLoadingCity",
+               br."portOfLoadingPostalCode",
+               br."portOfLoadingPortCode",
+               br."portOfLoadingCountryCode",
+               br."deliveryCity",
+               br."deliveryPostalCode",
+               br."deliveryStateCode",
+               br."deliveryCountryCode",
+               br."portOfDischargeCity",
+               br."portOfDischargePostalCode",
+               br."portOfDischargePortCode",
+               br."portOfDischargeCountryCode",
+               br."incoTerms",
+               br."collectPrepaid",
+               br."previousBookingNumber",
+               br."vesselName",
+               br."voyageNumber",
+               date(br."requestedShipmentTimeStart"),
+               date(br."requestedArrivalTimeStart"),
+               br."requestedShipmentTimeStart"::TIME,
+               br."requestedArrivalTimeStart"::TIME,
+               br."shippingInstructions",
+               CASE WHEN UPPER(brfp."freightPieceType") = 'CONTAINER' THEN brfp."subType" END,
+               CASE WHEN UPPER(brfp."freightPieceType") = 'CONTAINER' THEN brfp.quantity::TEXT END,
+               brfp."freightPieceType",
+               CASE WHEN UPPER(brfp."freightPieceType") != 'CONTAINER' THEN brfp.quantity::TEXT END,
+               CASE
+                   WHEN UPPER(brfp."freightPieceType") != 'CONTAINER'
+                       THEN CONCAT_WS(' x ', brfp."height", brfp."length", brfp."width")
+                   END,
+               brfp."measurementUnits",
+               NULL::DOUBLE PRECISION,
+               brfp."weight",
+               brfp."weightUnits",
+               brfp.hazardous::text,
+               brfp."hazardClass",
+               -- brr."remarkContent"
+               (SELECT STRING_AGG(brr."remarkContent", ', ')
+                FROM prod.booking_request_remarks brr
+                WHERE brr."bookingId" = br."bookingId") AS remarks
+        FROM prod.booking_requests br
+                 LEFT JOIN prod.booking_request_freight_pieces brfp ON br."bookingId" = brfp."bookingId"
+                 LEFT JOIN prod.documents d ON br."documentSerial" = d.document_serial
+                 LEFT JOIN prod.booking_request_parties brp ON d.stake_holder_id = brp."communityPartyId"
+             -- left join prod.booking_request_remarks brr on br."bookingId" = brr."bookingId"
+        WHERE br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id));
+END;
+$$;
+
+alter function prod.stardox_booking_json(text, uuid) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_remarks(p_tenant_id text, p_document_id uuid, p_tabindex integer,
+                                                        p_type text[])
+    returns TABLE
+            (
+                linenumber    integer,
+                remarkcontent text,
+                status        text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - /booking/remarks/{documentId}*/
+
+
+SELECT "lineNumber",
+       coalesce("remarkContent", ''),
+       rr."statusUI" as status
+FROM prod.booking_request_remarks rr
+         LEFT JOIN prod.booking_requests br
+                   ON br."bookingId" = rr."bookingId"
+WHERE (p_type is null or upper(rr."statusUI") = ANY (p_type::text[]))
+  AND br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND br.tab_index = p_tabindex
+
+$$;
+
+alter function prod.stardox_booking_remarks(text, uuid, integer, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_routes(p_tenant_id text, p_document_id uuid, p_tabindex integer,
+                                                       p_type text[])
+    returns TABLE
+            (
+                mode                text,
+                origin_city         text,
+                origin_state        text,
+                origin_country      text,
+                origin_zipcode      text,
+                dest_city           text,
+                dest_state          text,
+                dest_country        text,
+                destination_zipcode text,
+                terms               text,
+                service_type        text,
+                status              text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+    /*  stardox booking API -/booking/routes/{documentId}*/
+
+
+SELECT "jobMode"                                  as mode,
+       coalesce("portOfLoadingCity", '')          as origin_city,
+       coalesce("portOfLoadingStateName", '')     as origin_state,
+       coalesce("portOfLoadingCountryName", '')   as origin_country,
+       coalesce("portOfLoadingPostalCode", '')    as origin_zipcode,
+
+       coalesce("portOfDischargeCity", '')        as dest_city,
+       coalesce("portOfDischargeStateName", '')   as dest_state,
+       coalesce("portOfDischargeCountryName", '') as dest_country,
+       coalesce("portOfDischargePostalCode", '')  as destination_zipcode,
+
+       "incoTerms"                                as terms,
+       "jobType"                                  as service_type,
+       "statusUI"                                 as status
+FROM prod.booking_requests br
+WHERE "documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND tab_index = p_tabindex
+  AND (p_type is null or UPPER("statusUI") = ANY (p_type::text[]))
+
+$$;
+
+alter function prod.stardox_booking_routes(text, uuid, integer, text[]) owner to "Postgresadmin";
+
+create or replace function prod.stardox_booking_routes_details(p_tenant_id text, p_document_id uuid, p_route_id integer,
+                                                               p_tabindex integer)
+    returns TABLE
+            (
+                origin_location         text,
+                origin_airport          text,
+                destination_location    text,
+                destination_airport     text,
+                incoterms               text,
+                "previousBookingNumber" text,
+                customer_refernces      text,
+                vessel                  text,
+                voyage                  text,
+                pickup_time             timestamp without time zone,
+                terms                   text
+            )
+    language sql
+as
+$$
+    /* created by orit */
+/*  stardox API - /booking/routes/{documentId}/{routeId}*/
+SELECT concat(coalesce("portOfLoadingCity", ''), ',',
+              coalesce("portOfLoadingStateName", ''), ',',
+              coalesce("portOfLoadingCountryName", ''))                                          as origin_location,
+       concat(coalesce("portOfLoadingName", ''), ',', coalesce("portOfLoadingPortCode", ''))     as origin_airport,
+       concat(coalesce("portOfDischargeCity", ''), ',',
+              coalesce("portOfDischargeStateName", ''), ',',
+              coalesce("portOfDischargeCountryName", ''))                                        as destination_location,
+       concat(coalesce("portOfDischargeName", ''), ',', coalesce("portOfDischargePortCode", '')) as destination_airport,
+       coalesce("incoTerms", ''),
+       coalesce("previousBookingNumber", ''),
+       coalesce("orderNumber", '')                                                               as customer_refernces,--Customer refernces
+       coalesce("vesselName", '')                                                                as vessel,--Vessel / Flight / Train:
+       coalesce("voyageNumber", '')                                                              as voyage,--Voyage / Flight / Line:
+       "requestedShipmentTimeStart"                                                              as pickup_time,--Pickup time:??
+       coalesce("shippingInstructions", '')                                                      as terms--Terms & Conditions:
+FROM prod.booking_requests br
+WHERE br."documentSerial" = (SELECT * FROM prod.stardox_doc_serial(p_tenant_id, p_document_id))
+  AND tab_index = p_tabindex
+    --AND "routeId" = p_route_id
+$$;
+
+alter function prod.stardox_booking_routes_details(text, uuid, integer, integer) owner to "Postgresadmin";
+

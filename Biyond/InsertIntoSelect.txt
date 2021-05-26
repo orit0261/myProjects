@@ -1,0 +1,49 @@
+
+insert into prod.document_content(
+	"tenantId", 
+    "documentId",
+    routenumber,
+    "routeid",
+    "origin_countryname",
+    "origin_countrycode",
+    "origin_cityname",
+    "origin_citycode",
+    "origin_statename",
+    "origin_statecode",
+    "origin_portcode",
+    "destination_countryname",
+    "destination_countrycode",
+    "destination_cityname",
+    "destination_citycode",
+    "destination_statename",
+    "destination_statecode",
+    "destination_portcode",
+    "price_point_value",
+    "price_point_currencycode",
+    "validity",
+    "service",
+    "accepted")
+	
+ SELECT '2',2,row_number() over (order by po."portCode") as rn,'2', wa.origin_country,
+				 '2332',
+				wa.origin_city_name,
+        		wa.origin_city_code,    
+				'NY',		  
+				'3',
+    			wa.origin_gateway_damco,		
+    			wa.dest_country,   
+				'2',
+    			wa.dest_city_name,
+    			wa.dest_city_code,	 
+				'NY',	   
+				'3',	
+    			wa.dest_gateway_damco,				   
+				wa."main_carriage_-_1st_leg_ata_+1000_per_kg",
+  				'1'	,
+				NOW(),
+				'4',
+				TRUE
+			FROM mrr.weekly_air as wa left join prod.ports as po 
+  			on wa.dest_gateway_damco = po."portCode"
+			WHERE po."portCode" = 'DXB'
+		

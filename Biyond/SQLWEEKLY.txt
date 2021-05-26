@@ -1,0 +1,10 @@
+SELECT * FROM prod.ports limit 10
+where "cityName" = 'Maracay'
+
+select distinct origin_gateway_damco from mrr.weekly_air limit 10
+select * from mrr.weekly_air limit 10
+
+select *
+from mrr.weekly_air as wa left join prod.ports as po 
+  on wa.dest_gateway_damco = po."portCode"
+where po."portCode" = 'DXB'

@@ -1,0 +1,11 @@
+SELECT "tenantId", "documentId", "routeId", "chargeId", 
+"chargeType", qtty, units, price_value, "price_currencyCode", 
+"marginEffect_amount", "marginEffect_posOrNev", "businessEffect_amount", "businessEffect_posOrNev", "last30D_value", "last30D_currencyCode", "last60D_value", "last60D_currencyCode", "last90D_value", "last90D_currencyCode", "last120D_value", "last120D_currencyCode", remarks
+	FROM prod.document_charges;
+
+update prod.document_charges
+set "businessEffect_amount"=NULL,
+"last30D_currencyCode"=NULL, 
+ "last60D_currencyCode"=NULL,
+  "last90D_currencyCode"=NULL,
+  "last120D_currencyCode"=NULL

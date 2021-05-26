@@ -1,0 +1,9 @@
+-- auto-generated definition
+select count(*) from  mrr.fcl_dot
+where document_serial=317
+
+-- auto-generated definition
+select count(*) from  mrr.dot_origins
+where document_serial=317
+
+

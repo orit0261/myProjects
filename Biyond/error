@@ -1,0 +1,598 @@
+LOCAL CHARGES-ERROR
+select distinct tab_index from mrr.fcl_local_charges where document_serial=323
+
+
+connect.engine.execute(f"call prod.stardox_etl({doc_serial}, 'fcl_local_charges',{1}); commit;")
+
+
+C:\Python\Python37\python.exe "C:\Program Files\JetBrains\PyCharm Community Edition 2019.3.2\plugins\python-ce\helpers\pydev\pydevd.py" --multiproc --qt-support=auto --client 127.0.0.1 --port 60742 --file C:/PythonProjects/Stargo/Stardox_api_server/run.py
+pydev debugger: process 12440 is connecting
+Connected to pydev debugger (build 201.6668.115)
+ * Serving Flask app "run" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: on
+ * Restarting with stat
+pydev debugger: process 16832 is connecting
+ * Debugger is active!
+ * Debugger PIN: 227-271-937
+ * Running on http://0.0.0.0:5000/ (Press CTRL+C to quit)
+put_document
+Connecting to the PostgreSQL database...
+uploads/fbe0b841-5ead-4160-875a-d37d7351ce16.csv
+127.0.0.1 - - [06/May/2020 17:59:54] "PUT /file/fbe0b841-5ead-4160-875a-d37d7351ce16?tenantId=%22005237f9-6779-4c68-89d6-d0800559d4f4%22 HTTP/1.1" 200 -
+fcl on carriage
+Traceback (most recent call last):
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1248, in _execute_context
+    cursor, statement, parameters, context
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\default.py", line 588, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedFunction: operator does not exist: record = integer
+LINE 97:                   m.equipment = p90.equipment AND p90 = 1
+                                                               ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+QUERY:  INSERT INTO prod.document_charges("tenantId",
+                                          document_serial,
+                                          charge_type,
+                                          qtty,
+                                          units,
+                                          price_value,
+                                          price_currency_code,
+                                          remarks,
+                                          route_number,
+                                          record_id,
+                                          tab_index,
+                                          last30d_value,
+                                          last30d_currency_code,
+                                          last60d_value,
+                                          last60d_currency_code,
+                                          last90d_value,
+                                          last90d_currency_code,
+                                          last120d_value,
+                                          last120d_currency_code)
+        SELECT '005237f9-6779-4c68-89d6-d0800559d4f4',
+               m.document_serial,
+               CASE WHEN lower(m.carriage) = 'on' THEN 'FCL On-Carriage'
+                    WHEN lower(m.carriage) = 'pre' THEN 'FCL Pre-Carriage'
+               END,
+               1,
+               m.unit,
+               m.price,
+               m.currency,
+               concat_ws('|', concat('ContainerType:', m.equipment), concat('FromWeight:', m.from_weight),
+                         concat('ToWeight:', m.to_weight), concat('UnitType:', m.unit), concat('Type:', m.type),
+                         concat('Ratio:', m.ratio), concat('Remarks:', m.comment)),
+               m.route_number,
+               m.record_id,
+               m.tab_index,
+               p30.price,
+               p30.currency,
+               p60.price,
+               p60.currency,
+               p90.price,
+               p90.currency,
+               p120.price,
+               p120.currency
+          FROM mrr.fcl_pre_on_carriage AS m
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage, equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 30)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p30
+               ON m.via_loc = p30.via_loc AND m.loc = p30.loc AND m.from_weight = p30.from_weight AND
+                  m.to_weight = p30.to_weight AND m.type = p30.type AND m.carriage = p30.carriage AND
+                  m.equipment = p30.equipment AND p30.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 60)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p60
+               ON m.via_loc = p60.via_loc AND m.loc = p60.loc AND m.from_weight = p60.from_weight AND
+                  m.to_weight = p60.to_weight AND m.type = p60.type AND m.carriage = p60.carriage AND
+                  m.equipment = p60.equipment AND p60.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 90)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p90
+               ON m.via_loc = p90.via_loc AND m.loc = p90.loc AND m.from_weight = p90.from_weight AND
+                  m.to_weight = p90.to_weight AND m.type = p90.type AND m.carriage = p90.carriage AND
+                  m.equipment = p90.equipment AND p90 = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 120)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p120
+               ON m.via_loc = p120.via_loc AND m.loc = p120.loc AND m.from_weight = p120.from_weight AND
+                  m.to_weight = p120.to_weight AND m.type = p120.type AND m.carriage = p120.carriage AND
+                  m.equipment = p120.equipment AND p120.rn = 1
+         WHERE m.document_serial = p_document_serial
+           AND m.tab_index = p_tab_index
+           AND m.record_id NOT IN (SELECT e.record_id
+                                     FROM prod.document_exceptions AS e
+                                    WHERE e.document_serial = p_document_serial AND e.tab_index = p_tab_index)
+CONTEXT:  PL/pgSQL function prod.stardox_fcl_insert_doc_charges(integer,text,integer) line 132 at SQL statement
+SQL function "stardox_fcl_etl" statement 7
+SQL statement "CALL prod.stardox_fcl_etl(p_document_serial, p_table_name, p_tab_index)"
+PL/pgSQL function prod.stardox_etl(integer,text,integer) line 10 at CALL
+The above exception was the direct cause of the following exception:
+Traceback (most recent call last):
+  File "C:\Python\Python37\lib\threading.py", line 870, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\PythonProjects\Stargo\Stardox_api_server\Air\main.py", line 256, in Parse_Excel_Files
+    connect.engine.execute(f"call prod.stardox_etl({doc_serial}, 'fcl_pre_on_carriage',{0}); commit;")
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 2191, in execute
+    return connection.execute(statement, *multiparams, **params)
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 976, in execute
+    return self._execute_text(object_, multiparams, params)
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1151, in _execute_text
+    parameters,
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1288, in _execute_context
+    e, statement, parameters, cursor, context
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1482, in _handle_dbapi_exception
+    sqlalchemy_exception, with_traceback=exc_info[2], from_=e
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\util\compat.py", line 178, in raise_
+    raise exception
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1248, in _execute_context
+    cursor, statement, parameters, context
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\default.py", line 588, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedFunction) operator does not exist: record = integer
+LINE 97:                   m.equipment = p90.equipment AND p90 = 1
+                                                               ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+QUERY:  INSERT INTO prod.document_charges("tenantId",
+                                          document_serial,
+                                          charge_type,
+                                          qtty,
+                                          units,
+                                          price_value,
+                                          price_currency_code,
+                                          remarks,
+                                          route_number,
+                                          record_id,
+                                          tab_index,
+                                          last30d_value,
+                                          last30d_currency_code,
+                                          last60d_value,
+                                          last60d_currency_code,
+                                          last90d_value,
+                                          last90d_currency_code,
+                                          last120d_value,
+                                          last120d_currency_code)
+        SELECT '005237f9-6779-4c68-89d6-d0800559d4f4',
+               m.document_serial,
+               CASE WHEN lower(m.carriage) = 'on' THEN 'FCL On-Carriage'
+                    WHEN lower(m.carriage) = 'pre' THEN 'FCL Pre-Carriage'
+               END,
+               1,
+               m.unit,
+               m.price,
+               m.currency,
+               concat_ws('|', concat('ContainerType:', m.equipment), concat('FromWeight:', m.from_weight),
+                         concat('ToWeight:', m.to_weight), concat('UnitType:', m.unit), concat('Type:', m.type),
+                         concat('Ratio:', m.ratio), concat('Remarks:', m.comment)),
+               m.route_number,
+               m.record_id,
+               m.tab_index,
+               p30.price,
+               p30.currency,
+               p60.price,
+               p60.currency,
+               p90.price,
+               p90.currency,
+               p120.price,
+               p120.currency
+          FROM mrr.fcl_pre_on_carriage AS m
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage, equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 30)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p30
+               ON m.via_loc = p30.via_loc AND m.loc = p30.loc AND m.from_weight = p30.from_weight AND
+                  m.to_weight = p30.to_weight AND m.type = p30.type AND m.carriage = p30.carriage AND
+                  m.equipment = p30.equipment AND p30.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 60)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p60
+               ON m.via_loc = p60.via_loc AND m.loc = p60.loc AND m.from_weight = p60.from_weight AND
+                  m.to_weight = p60.to_weight AND m.type = p60.type AND m.carriage = p60.carriage AND
+                  m.equipment = p60.equipment AND p60.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 90)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p90
+               ON m.via_loc = p90.via_loc AND m.loc = p90.loc AND m.from_weight = p90.from_weight AND
+                  m.to_weight = p90.to_weight AND m.type = p90.type AND m.carriage = p90.carriage AND
+                  m.equipment = p90.equipment AND p90 = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 120)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p120
+               ON m.via_loc = p120.via_loc AND m.loc = p120.loc AND m.from_weight = p120.from_weight AND
+                  m.to_weight = p120.to_weight AND m.type = p120.type AND m.carriage = p120.carriage AND
+                  m.equipment = p120.equipment AND p120.rn = 1
+         WHERE m.document_serial = p_document_serial
+           AND m.tab_index = p_tab_index
+           AND m.record_id NOT IN (SELECT e.record_id
+                                     FROM prod.document_exceptions AS e
+                                    WHERE e.document_serial = p_document_serial AND e.tab_index = p_tab_index)
+CONTEXT:  PL/pgSQL function prod.stardox_fcl_insert_doc_charges(integer,text,integer) line 132 at SQL statement
+SQL function "stardox_fcl_etl" statement 7
+SQL statement "CALL prod.stardox_fcl_etl(p_document_serial, p_table_name, p_tab_index)"
+PL/pgSQL function prod.stardox_etl(integer,text,integer) line 10 at CALL
+[SQL: call prod.stardox_etl(321, 'fcl_pre_on_carriage',0); commit;]
+(Background on this error at: http://sqlalche.me/e/f405)
+Exception in thread Thread-10:
+Traceback (most recent call last):
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1248, in _execute_context
+    cursor, statement, parameters, context
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\default.py", line 588, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.UndefinedFunction: operator does not exist: record = integer
+LINE 97:                   m.equipment = p90.equipment AND p90 = 1
+                                                               ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+QUERY:  INSERT INTO prod.document_charges("tenantId",
+                                          document_serial,
+                                          charge_type,
+                                          qtty,
+                                          units,
+                                          price_value,
+                                          price_currency_code,
+                                          remarks,
+                                          route_number,
+                                          record_id,
+                                          tab_index,
+                                          last30d_value,
+                                          last30d_currency_code,
+                                          last60d_value,
+                                          last60d_currency_code,
+                                          last90d_value,
+                                          last90d_currency_code,
+                                          last120d_value,
+                                          last120d_currency_code)
+        SELECT '005237f9-6779-4c68-89d6-d0800559d4f4',
+               m.document_serial,
+               CASE WHEN lower(m.carriage) = 'on' THEN 'FCL On-Carriage'
+                    WHEN lower(m.carriage) = 'pre' THEN 'FCL Pre-Carriage'
+               END,
+               1,
+               m.unit,
+               m.price,
+               m.currency,
+               concat_ws('|', concat('ContainerType:', m.equipment), concat('FromWeight:', m.from_weight),
+                         concat('ToWeight:', m.to_weight), concat('UnitType:', m.unit), concat('Type:', m.type),
+                         concat('Ratio:', m.ratio), concat('Remarks:', m.comment)),
+               m.route_number,
+               m.record_id,
+               m.tab_index,
+               p30.price,
+               p30.currency,
+               p60.price,
+               p60.currency,
+               p90.price,
+               p90.currency,
+               p120.price,
+               p120.currency
+          FROM mrr.fcl_pre_on_carriage AS m
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage, equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 30)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p30
+               ON m.via_loc = p30.via_loc AND m.loc = p30.loc AND m.from_weight = p30.from_weight AND
+                  m.to_weight = p30.to_weight AND m.type = p30.type AND m.carriage = p30.carriage AND
+                  m.equipment = p30.equipment AND p30.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 60)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p60
+               ON m.via_loc = p60.via_loc AND m.loc = p60.loc AND m.from_weight = p60.from_weight AND
+                  m.to_weight = p60.to_weight AND m.type = p60.type AND m.carriage = p60.carriage AND
+                  m.equipment = p60.equipment AND p60.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 90)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p90
+               ON m.via_loc = p90.via_loc AND m.loc = p90.loc AND m.from_weight = p90.from_weight AND
+                  m.to_weight = p90.to_weight AND m.type = p90.type AND m.carriage = p90.carriage AND
+                  m.equipment = p90.equipment AND p90 = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 120)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p120
+               ON m.via_loc = p120.via_loc AND m.loc = p120.loc AND m.from_weight = p120.from_weight AND
+                  m.to_weight = p120.to_weight AND m.type = p120.type AND m.carriage = p120.carriage AND
+                  m.equipment = p120.equipment AND p120.rn = 1
+         WHERE m.document_serial = p_document_serial
+           AND m.tab_index = p_tab_index
+           AND m.record_id NOT IN (SELECT e.record_id
+                                     FROM prod.document_exceptions AS e
+                                    WHERE e.document_serial = p_document_serial AND e.tab_index = p_tab_index)
+CONTEXT:  PL/pgSQL function prod.stardox_fcl_insert_doc_charges(integer,text,integer) line 132 at SQL statement
+SQL function "stardox_fcl_etl" statement 7
+SQL statement "CALL prod.stardox_fcl_etl(p_document_serial, p_table_name, p_tab_index)"
+PL/pgSQL function prod.stardox_etl(integer,text,integer) line 10 at CALL
+The above exception was the direct cause of the following exception:
+Traceback (most recent call last):
+  File "C:\Python\Python37\lib\threading.py", line 926, in _bootstrap_inner
+    self.run()
+  File "C:\Python\Python37\lib\threading.py", line 870, in run
+    self._target(*self._args, **self._kwargs)
+  File "C:\PythonProjects\Stargo\Stardox_api_server\Air\main.py", line 256, in Parse_Excel_Files
+    connect.engine.execute(f"call prod.stardox_etl({doc_serial}, 'fcl_pre_on_carriage',{0}); commit;")
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 2191, in execute
+    return connection.execute(statement, *multiparams, **params)
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 976, in execute
+    return self._execute_text(object_, multiparams, params)
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1151, in _execute_text
+    parameters,
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1288, in _execute_context
+    e, statement, parameters, cursor, context
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1482, in _handle_dbapi_exception
+    sqlalchemy_exception, with_traceback=exc_info[2], from_=e
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\util\compat.py", line 178, in raise_
+    raise exception
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\base.py", line 1248, in _execute_context
+    cursor, statement, parameters, context
+  File "C:\Python\Python37\lib\site-packages\sqlalchemy\engine\default.py", line 588, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedFunction) operator does not exist: record = integer
+LINE 97:                   m.equipment = p90.equipment AND p90 = 1
+                                                               ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+QUERY:  INSERT INTO prod.document_charges("tenantId",
+                                          document_serial,
+                                          charge_type,
+                                          qtty,
+                                          units,
+                                          price_value,
+                                          price_currency_code,
+                                          remarks,
+                                          route_number,
+                                          record_id,
+                                          tab_index,
+                                          last30d_value,
+                                          last30d_currency_code,
+                                          last60d_value,
+                                          last60d_currency_code,
+                                          last90d_value,
+                                          last90d_currency_code,
+                                          last120d_value,
+                                          last120d_currency_code)
+        SELECT '005237f9-6779-4c68-89d6-d0800559d4f4',
+               m.document_serial,
+               CASE WHEN lower(m.carriage) = 'on' THEN 'FCL On-Carriage'
+                    WHEN lower(m.carriage) = 'pre' THEN 'FCL Pre-Carriage'
+               END,
+               1,
+               m.unit,
+               m.price,
+               m.currency,
+               concat_ws('|', concat('ContainerType:', m.equipment), concat('FromWeight:', m.from_weight),
+                         concat('ToWeight:', m.to_weight), concat('UnitType:', m.unit), concat('Type:', m.type),
+                         concat('Ratio:', m.ratio), concat('Remarks:', m.comment)),
+               m.route_number,
+               m.record_id,
+               m.tab_index,
+               p30.price,
+               p30.currency,
+               p60.price,
+               p60.currency,
+               p90.price,
+               p90.currency,
+               p120.price,
+               p120.currency
+          FROM mrr.fcl_pre_on_carriage AS m
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage, equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 30)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p30
+               ON m.via_loc = p30.via_loc AND m.loc = p30.loc AND m.from_weight = p30.from_weight AND
+                  m.to_weight = p30.to_weight AND m.type = p30.type AND m.carriage = p30.carriage AND
+                  m.equipment = p30.equipment AND p30.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 60)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p60
+               ON m.via_loc = p60.via_loc AND m.loc = p60.loc AND m.from_weight = p60.from_weight AND
+                  m.to_weight = p60.to_weight AND m.type = p60.type AND m.carriage = p60.carriage AND
+                  m.equipment = p60.equipment AND p60.rn = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 90)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p90
+               ON m.via_loc = p90.via_loc AND m.loc = p90.loc AND m.from_weight = p90.from_weight AND
+                  m.to_weight = p90.to_weight AND m.type = p90.type AND m.carriage = p90.carriage AND
+                  m.equipment = p90.equipment AND p90 = 1
+               LEFT JOIN (SELECT price,
+                                 currency,
+                                 via_loc,
+                                 loc,
+                                 from_weight,
+                                 to_weight,
+                                 type,
+                                 carriage,
+                                 equipment,
+                                 row_number()
+                                 OVER (PARTITION BY via_loc, loc, from_weight, to_weight, type, carriage,equipment ORDER BY valid_to_date) AS rn
+                            FROM prod.fcl_pre_on_carriage
+                           WHERE valid_to_date >= (current_date - 120)
+                           ORDER BY valid_to_date
+                           LIMIT 1) AS p120
+               ON m.via_loc = p120.via_loc AND m.loc = p120.loc AND m.from_weight = p120.from_weight AND
+                  m.to_weight = p120.to_weight AND m.type = p120.type AND m.carriage = p120.carriage AND
+                  m.equipment = p120.equipment AND p120.rn = 1
+         WHERE m.document_serial = p_document_serial
+           AND m.tab_index = p_tab_index
+           AND m.record_id NOT IN (SELECT e.record_id
+                                     FROM prod.document_exceptions AS e
+                                    WHERE e.document_serial = p_document_serial AND e.tab_index = p_tab_index)
+CONTEXT:  PL/pgSQL function prod.stardox_fcl_insert_doc_charges(integer,text,integer) line 132 at SQL statement
+SQL function "stardox_fcl_etl" statement 7
+SQL statement "CALL prod.stardox_fcl_etl(p_document_serial, p_table_name, p_tab_index)"
+PL/pgSQL function prod.stardox_etl(integer,text,integer) line 10 at CALL
+[SQL: call prod.stardox_etl(321, 'fcl_pre_on_carriage',0); commit;]
+(Background on this error at: http://sqlalche.me/e/f405)
