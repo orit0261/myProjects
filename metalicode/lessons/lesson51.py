@@ -7,3 +7,4 @@ print(str_f1)
 
 str_f1= f"this is{str_a:>30}"
 print(str_f1)
+
