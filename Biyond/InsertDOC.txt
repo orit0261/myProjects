@@ -1,6 +1,0 @@
-INSERT INTO prod.documents(
-	"tenantId", "documentId", "signedUrl", stakeholderid, "docoumentTitle", "documentCategory",
-	"expiredInMin", documentname, documenttype, "docStage", "docStatus",
-	"receivedDate", "modifiedDate", numberofpriceexceptions, numberofotherexceptions)
-	VALUES ('1', 1, ?, '18', 'doc num 1', 'word', '12', 'Example1.docx', 'docx', 'NEW', 
-			'NEW', NOW(), NOW()+1, 12, 13);
