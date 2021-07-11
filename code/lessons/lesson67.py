@@ -6,7 +6,7 @@ class test():
     def x(self):
         print("x called")
         return self.__x
-
+#ggg
     @x.setter
     def x(self,x):
         if x<101:
