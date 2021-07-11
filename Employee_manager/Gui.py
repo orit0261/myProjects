@@ -2,15 +2,24 @@
 
 import PySimpleGUI as sg
 
-def open_window(msg):
-    layout = [[sg.Text(msg, key="new")],[sg.Button("CLOSE")]]
-    window = sg.Window("Message Window", layout, modal=True, background_color='black')
+def open_window(msg, m_layout):
+    layout = [[sg.Text(msg, key="new")],m_layout,[sg.Text('This is my sample text',key="error_msg",visible=False,text_color='red',background_color='light grey')],[sg.Button("OK"), sg.Button("CLOSE")]]
+    window_son = sg.Window("Message Window", layout, modal=True, background_color='light grey')
     choice = None
     while True:
-        event, values = window.read()
+        event, svalues = window_son.read()
         if event == "CLOSE" or event == sg.WIN_CLOSED:
             break
-    window.close()
+        if event == "OK" :
+            emptyval=False
+            for val in svalues:
+                print(svalues[val])
+                if svalues[val]=='':
+                    emptyval = True
+                    window_son["error_msg"].update(value='missing value!',visible=True)
+            if not emptyval:
+              break
+    window_son.close()
 
 def main():
     t_color = 'black'
@@ -45,7 +54,13 @@ def main():
              open_window(f'int value is excepted, You entered {values[0]}')
            else:
                if val>0 and val<9:
-                open_window("Processing...")
+                   if val==1: # add emplyee manually
+                       m1_layout =[ [sg.Text('id:', key='id_text', text_color=t_color, background_color=b_color), sg.InputText()],
+                           [sg.Text('name:', key='name_text', text_color=t_color, background_color=b_color), sg.InputText()],
+                           [sg.Text('phone:', key='phone_text', text_color=t_color, background_color=b_color), sg.InputText()],
+                           [sg.Text('age:', key='age_text', text_color=t_color, background_color=b_color), sg.InputText()]]
+
+                       open_window("Enter Employee Details:",m1_layout)
 
     window.close()
 
