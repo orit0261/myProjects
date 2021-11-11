@@ -19,8 +19,8 @@ async def main():
     connector = AnimalScraper()
     animal_rows = await connector.get_animals_from_url()
 
-    images = await connector.get_animal_images(lambda x: x, 'images/')
-    print(images)
+    #images = await connector.get_animal_images(lambda x: x, 'images/')
+    #print(images)
 
     grouped_by_key = await group_by(animal_rows, key='Collateral adjective')
 
@@ -42,7 +42,7 @@ async def print_all_animals_by_key(grouped_by_key):
             # Html_file.close()
 
 async def group_by(animal_rows, key):
-    d2 = defaultdict(list)
+    d2 = defaultdict(list)#default_factory: A function returning the default value for the dictionary defined. If this argument is absent then the dictionary raises a KeyError.
     # d2 = Counter()
     for animal in animal_rows:
 

@@ -26,7 +26,7 @@ class AnimalScraper:
             for row in rows[1:]:  # jump over header
                 cells = row.find_all('td')
                 columns = dict()
-                for x, y in zip(header_row, cells):
+                for x, y in zip(header_row, cells):#col header and it's value by row
                     if len(y.text) > 1:
                         columns[x.text.replace('\n', '')] = get_all_br(y)
                         if y.find('a', href=True) and 'href' in y.find('a', href=True).attrs:
@@ -89,7 +89,7 @@ def clean_text(text):
 
 
 def get_all_br(item):
-    lst = item.find_all('br')
+    lst = item.find_all('br')#<br> tag inserts a single line break
     if len(lst) > 0:
         ret = [clean_text(x.text) for x in lst]
     elif ',' in item.text:

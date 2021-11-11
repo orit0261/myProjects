@@ -1,10 +1,3 @@
-[20:03:00] [DEBUG] [proactor_events.__init__] Using proactor: IocpProactor
-[20:03:00] [DEBUG] [connectionpool._new_conn] Starting new HTTPS connection (1): en.wikipedia.org:443
-[20:03:02] [DEBUG] [connectionpool._make_request] https://en.wikipedia.org:443 "GET /wiki/List_of_animal_names HTTP/1.1" 200 52477
-[20:03:02] [DEBUG] [connectionpool._new_conn] Starting new HTTPS connection (1): en.wikipedia.org:443
-[20:03:03] [DEBUG] [connectionpool._make_request] https://en.wikipedia.org:443 "GET /wiki/Aardvark HTTP/1.1" 200 45410
-[20:03:03] [DEBUG] [connectionpool._new_conn] Starting new HTTPS connection (1): upload.wikimedia.org:443
-[20:03:04] [DEBUG] [connectionpool._make_request] https://upload.wikimedia.org:443 "GET /wikipedia/commons/thumb/d/d4/Aardvark_%28Orycteropus_afer%29.jpg/220px-Aardvark_%28Orycteropus_afer%29.jpg HTTP/1.1" 200 17711
-[20:03:04] [DEBUG] [connectionpool._new_conn] Starting new HTTPS connection (1): en.wikipedia.org:443
-[20:03:04] [DEBUG] [connectionpool._make_request] https://en.wikipedia.org:443 "GET /wiki/Albatross HTTP/1.1" 200 None
-[20:03:05] [DEBUG] [connectionpool._new_conn] Starting new HTTPS connection (1): upload.wikimedia.org:443
+[08:56:16] [DEBUG] [proactor_events.__init__] Using proactor: IocpProactor
+[08:56:16] [DEBUG] [connectionpool._new_conn] Starting new HTTPS connection (1): en.wikipedia.org:443
+[08:56:17] [DEBUG] [connectionpool._make_request] https://en.wikipedia.org:443 "GET /wiki/List_of_animal_names HTTP/1.1" 200 52475

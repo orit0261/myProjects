@@ -69,3 +69,4 @@ res = list(map(itemgetter(1), l))
 print(res)
 print ("List with only nth tuple element (i.e names) : " + str(res))
 
+print("l love Cytaka"[::2])
