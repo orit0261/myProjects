@@ -15,6 +15,6 @@ def get_pages(link):
         pages_to_visit.append(url)
     yield current_page
 
-webpage = get_pages('http://www.example.com')
+webpage = get_pages('https://data.gov.il/api/3/action/datastore_search')
 for result in webpage:
   print(result)
